@@ -1,3 +1,4 @@
+
 import { useState, useMemo, useEffect } from "react";
 import { format, addDays, startOfWeek, isSameDay, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -8,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { appointments, AppointmentStatus } from "@/lib/data";
+import { appointments as mockAppointments, patients, AppointmentStatus } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Dialog,
@@ -19,10 +20,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const TIME_SLOTS = [
   "08:00", "09:00", "10:00", "11:00", "12:00", 
@@ -85,6 +88,8 @@ export default function WeeklyCalendar() {
     phone: "",
     notes: ""
   });
+  const [selectedPatientId, setSelectedPatientId] = useState<string>("");
+  const [appointments, setAppointments] = useState<typeof mockAppointments>([]);
   const { toast } = useToast();
   
   const weekStart = useMemo(() => {
@@ -104,11 +109,25 @@ export default function WeeklyCalendar() {
         console.error('Erro ao carregar horários disponíveis:', e);
       }
     }
+    
+    // Load saved appointments
+    const savedAppointments = localStorage.getItem('appointments');
+    if (savedAppointments) {
+      try {
+        setAppointments(JSON.parse(savedAppointments));
+      } catch (e) {
+        console.error('Erro ao carregar consultas:', e);
+      }
+    }
   }, []);
 
   useEffect(() => {
     localStorage.setItem('availableSlots', JSON.stringify(availableSlots));
   }, [availableSlots]);
+  
+  useEffect(() => {
+    localStorage.setItem('appointments', JSON.stringify(appointments));
+  }, [appointments]);
 
   const goToPreviousWeek = () => {
     setCurrentDate(addDays(weekStart, -7));
@@ -158,11 +177,73 @@ export default function WeeklyCalendar() {
     setSelectedSlot(null);
   };
 
-  const scheduleNewAppointment = (day: Date, timeSlot: string) => {
+  const scheduleNewAppointment = () => {
+    if (!selectedSlot || !selectedPatientId) {
+      toast({
+        title: "Atenção",
+        description: "Selecione um paciente para agendar a consulta.",
+      });
+      return;
+    }
+    
+    const patient = patients.find(p => p.id === selectedPatientId);
+    if (!patient) return;
+    
+    const newAppointment = {
+      id: `a${Date.now()}`,
+      patientId: patient.id,
+      patientName: patient.name,
+      date: new Date(selectedSlot.day.setHours(
+        Number(selectedSlot.time.split(':')[0]),
+        Number(selectedSlot.time.split(':')[1])
+      )),
+      duration: 50,
+      status: "scheduled" as AppointmentStatus,
+      notes: "",
+      paid: false
+    };
+    
+    setAppointments(prev => [...prev, newAppointment]);
+    
+    // Remove the slot from available slots since it's now booked
+    removeSlotAvailability(selectedSlot.day, selectedSlot.time);
+    
     toast({
-      title: "Agendar nova consulta",
-      description: `${format(day, "EEEE", { locale: ptBR })} às ${timeSlot}`,
+      title: "Consulta agendada",
+      description: `${patient.name} - ${format(selectedSlot.day, "EEEE", { locale: ptBR })} às ${selectedSlot.time}`,
     });
+    
+    setSelectedPatientId("");
+    setSelectedSlot(null);
+  };
+  
+  const reserveTimeSlot = () => {
+    if (!selectedSlot) return;
+    
+    toast({
+      title: "Horário reservado",
+      description: `${format(selectedSlot.day, "EEEE", { locale: ptBR })} às ${selectedSlot.time} foi reservado.`,
+    });
+    
+    // Create a reserved appointment without a patient
+    const newAppointment = {
+      id: `reserved-${Date.now()}`,
+      patientId: "reserved",
+      patientName: "Horário Reservado",
+      date: new Date(selectedSlot.day.setHours(
+        Number(selectedSlot.time.split(':')[0]),
+        Number(selectedSlot.time.split(':')[1])
+      )),
+      duration: 50,
+      status: "scheduled" as AppointmentStatus,
+      notes: "Horário reservado",
+      paid: false
+    };
+    
+    setAppointments(prev => [...prev, newAppointment]);
+    
+    // Remove the slot from available slots
+    removeSlotAvailability(selectedSlot.day, selectedSlot.time);
     setSelectedSlot(null);
   };
   
@@ -227,10 +308,6 @@ export default function WeeklyCalendar() {
           <Button variant="outline" size="sm" onClick={goToNextWeek} className="button-bounce">
             <ChevronRight className="h-4 w-4" />
             <span className="sr-only">Próxima semana</span>
-          </Button>
-          <Button size="sm" className="button-bounce">
-            <Calendar className="h-4 w-4 mr-1" />
-            Nova Consulta
           </Button>
         </div>
       </CardHeader>
@@ -359,12 +436,40 @@ export default function WeeklyCalendar() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <label htmlFor="patient-select" className="text-sm font-medium">
+                  Selecione o paciente
+                </label>
+                <Select
+                  value={selectedPatientId}
+                  onValueChange={setSelectedPatientId}
+                >
+                  <SelectTrigger id="patient-select">
+                    <SelectValue placeholder="Selecione um paciente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {patients.map((patient) => (
+                      <SelectItem key={patient.id} value={patient.id}>
+                        {patient.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button 
-                onClick={() => selectedSlot && scheduleNewAppointment(selectedSlot.day, selectedSlot.time)}
+                onClick={scheduleNewAppointment}
                 className="flex items-center justify-start"
               >
                 <Calendar className="mr-2 h-4 w-4" />
                 Agendar consulta
+              </Button>
+              <Button 
+                onClick={reserveTimeSlot}
+                variant="outline"
+                className="flex items-center justify-start"
+              >
+                <Clock className="mr-2 h-4 w-4" />
+                Reservar horário
               </Button>
               <Button 
                 onClick={openNewPatientDialog} 
