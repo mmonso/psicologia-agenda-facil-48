@@ -110,7 +110,7 @@ export default function CalendarTimeCell({
           onClick={onAddAvailability}
         >
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-            <Plus className="h-4 w-4 text-muted-foreground" />
+            <Plus className="h-3 w-3 text-slate-300" />
             <span className="sr-only">Adicionar disponibilidade</span>
           </Button>
         </div>
