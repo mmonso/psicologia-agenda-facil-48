@@ -1,46 +1,45 @@
-
 import { useState } from "react";
-import { PageLayout } from "@/components/layout/PageLayout";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { format, isSameDay, setHours, setMinutes } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, MoreHorizontal, CalendarPlus, FileEdit, Trash2 } from "lucide-react";
-import { formatDate, patients, PatientStatus } from "@/lib/data";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { PageLayout } from "@/components/layout/PageLayout";
+import { appointments, AppointmentStatus } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
-const getStatusDetails = (status: PatientStatus) => {
+const getStatusDetails = (status: AppointmentStatus) => {
   switch (status) {
-    case "active":
+    case "scheduled":
       return {
-        label: "Ativo",
-        variant: "default",
+        label: "Agendada",
+        variant: "default" as const,
+        className: "bg-primary",
+      };
+    case "completed":
+      return {
+        label: "Realizada",
+        variant: "outline" as const,
         className: "bg-green-500",
       };
-    case "inactive":
+    case "canceled":
       return {
-        label: "Inativo",
-        variant: "outline" as const,
+        label: "Cancelada",
+        variant: "destructive" as const,
       };
-    case "waiting":
+    case "no-show":
       return {
-        label: "Aguardando",
-        variant: "secondary" as const,
+        label: "Não compareceu",
+        variant: "destructive" as const,
+        className: "bg-amber-500",
       };
     default:
       return {
@@ -50,128 +49,243 @@ const getStatusDetails = (status: PatientStatus) => {
   }
 };
 
-export default function Patients() {
+export default function Appointments() {
   const [searchTerm, setSearchTerm] = useState("");
-  
-  const filteredPatients = patients.filter(
-    (patient) =>
-      patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.phone.includes(searchTerm)
-  );
+  const [date, setDate] = useState<Date>(new Date());
+  const [view, setView] = useState<"day" | "month">("day");
+
+  // Filter appointments for the current date when in day view
+  // or filter by search term in both views
+  const filteredAppointments = appointments.filter((appointment) => {
+    const matchesSearch =
+      appointment.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      appointment.notes.toLowerCase().includes(searchTerm.toLowerCase());
+
+    if (view === "day") {
+      return (
+        isSameDay(new Date(appointment.date), date) && (searchTerm === "" || matchesSearch)
+      );
+    }
+    
+    return searchTerm === "" || matchesSearch;
+  });
+
+  // Sort appointments by time for day view
+  const sortedAppointments = [...filteredAppointments].sort((a, b) => {
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
+
+  const handlePrevDay = () => {
+    setDate((prev) => {
+      const newDate = new Date(prev);
+      newDate.setDate(newDate.getDate() - 1);
+      return newDate;
+    });
+  };
+
+  const handleNextDay = () => {
+    setDate((prev) => {
+      const newDate = new Date(prev);
+      newDate.setDate(newDate.getDate() + 1);
+      return newDate;
+    });
+  };
+
+  // Generate time slots for the day view
+  const generateTimeSlots = () => {
+    const timeSlots = [];
+    const startHour = 8; // 8 AM
+    const endHour = 18; // 6 PM
+
+    for (let hour = startHour; hour <= endHour; hour++) {
+      for (let minute of [0, 30]) {
+        const time = setMinutes(setHours(new Date(date), hour), minute);
+        timeSlots.push(time);
+      }
+    }
+
+    return timeSlots;
+  };
+
+  const timeSlots = generateTimeSlots();
+
+  // Find appointment at a specific time slot
+  const getAppointmentAtTime = (time: Date) => {
+    return sortedAppointments.find((appointment) => {
+      const appointmentTime = new Date(appointment.date);
+      return (
+        appointmentTime.getHours() === time.getHours() &&
+        appointmentTime.getMinutes() === time.getMinutes() &&
+        isSameDay(appointmentTime, time)
+      );
+    });
+  };
 
   return (
     <PageLayout>
       <div className="space-y-6">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-          <h1 className="text-3xl font-bold tracking-tight">Pacientes</h1>
-          <Button className="button-bounce">
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Paciente
-          </Button>
+          <h1 className="text-3xl font-bold tracking-tight">Consultas</h1>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant={view === "day" ? "default" : "outline"} 
+              onClick={() => setView("day")}
+              className="button-bounce"
+            >
+              Dia
+            </Button>
+            <Button 
+              variant={view === "month" ? "default" : "outline"} 
+              onClick={() => setView("month")}
+              className="button-bounce"
+            >
+              Mês
+            </Button>
+            <Button className="button-bounce">
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Consulta
+            </Button>
+          </div>
         </div>
-        
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Buscar pacientes..."
+              placeholder="Buscar consultas..."
               className="w-full bg-background pl-8"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-auto gap-2">
+                <CalendarIcon className="h-4 w-4" />
+                <span>
+                  {format(date, view === "day" ? "dd 'de' MMMM, yyyy" : "MMMM yyyy", {
+                    locale: ptBR,
+                  })}
+                </span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-auto p-0 pointer-events-auto">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={(newDate) => newDate && setDate(newDate)}
+                initialFocus
+                locale={ptBR}
+                className="p-3"
+              />
+            </PopoverContent>
+          </Popover>
         </div>
-        
-        <div className="rounded-md border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Início</TableHead>
-                <TableHead>Sessões</TableHead>
-                <TableHead>Próx. Consulta</TableHead>
-                <TableHead>Contato</TableHead>
-                <TableHead>Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPatients.length > 0 ? (
-                filteredPatients.map((patient) => {
-                  const statusDetails = getStatusDetails(patient.status);
-                  
-                  return (
-                    <TableRow key={patient.id}>
-                      <TableCell className="font-medium">
-                        {patient.name}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={statusDetails.variant}
-                          className={cn(statusDetails.className)}
-                        >
-                          {statusDetails.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {formatDate(patient.startDate, "dd/MM/yyyy")}
-                      </TableCell>
-                      <TableCell>{patient.totalSessions}</TableCell>
-                      <TableCell>
-                        {patient.nextAppointment
-                          ? formatDate(patient.nextAppointment, "dd/MM/yyyy")
-                          : "Não agendado"}
-                      </TableCell>
-                      <TableCell>
-                        <div>{patient.email}</div>
-                        <div className="text-muted-foreground">
-                          {patient.phone}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              className="h-8 w-8 p-0"
-                            >
-                              <span className="sr-only">Abrir menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuItem>
-                              <CalendarPlus className="mr-2 h-4 w-4" />
-                              Agendar consulta
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <FileEdit className="mr-2 h-4 w-4" />
-                              Editar paciente
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive focus:text-destructive">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Excluir paciente
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
-                    Nenhum paciente encontrado.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+
+        {view === "day" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Button variant="ghost" size="icon" onClick={handlePrevDay}>
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              <h2 className="text-xl font-semibold">
+                {format(date, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+              </h2>
+              <Button variant="ghost" size="icon" onClick={handleNextDay}>
+                <ChevronRight className="h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              {timeSlots.map((time, index) => {
+                const appointment = getAppointmentAtTime(time);
+                const isHalfHour = time.getMinutes() === 30;
+                
+                return (
+                  <div 
+                    key={index} 
+                    className={cn(
+                      "grid grid-cols-[80px_1fr] gap-2",
+                      isHalfHour ? "opacity-50" : "opacity-100"
+                    )}
+                  >
+                    <div className="flex items-center justify-end text-sm text-muted-foreground">
+                      {format(time, "HH:mm")}
+                    </div>
+                    {appointment ? (
+                      <Card 
+                        className={cn(
+                          "hover-card-effect border-l-4 border-l-primary",
+                          appointment.status === "completed" && "border-l-green-500",
+                          appointment.status === "canceled" && "border-l-destructive",
+                          appointment.status === "no-show" && "border-l-amber-500"
+                        )}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex justify-between">
+                            <div>
+                              <h3 className="font-medium">{appointment.patientName}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                {appointment.notes}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-xs",
+                                  appointment.paid 
+                                    ? "bg-green-500 text-white" 
+                                    : "bg-amber-500 text-white"
+                                )}
+                              >
+                                {appointment.paid ? "Pago" : "Pendente"}
+                              </Badge>
+                              <Badge
+                                variant={getStatusDetails(appointment.status).variant}
+                                className={cn(getStatusDetails(appointment.status).className)}
+                              >
+                                {getStatusDetails(appointment.status).label}
+                              </Badge>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <div className="flex min-h-[70px] items-center rounded-md border border-dashed px-4">
+                        <span className="text-muted-foreground">Disponível</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {view === "month" && (
+          <div className="rounded-md border bg-card p-4">
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={(newDate) => {
+                if (newDate) {
+                  setDate(newDate);
+                  setView("day");
+                }
+              }}
+              className="w-full"
+              locale={ptBR}
+              modifiersStyles={{
+                selected: {
+                  backgroundColor: "hsl(var(--primary))",
+                  color: "white",
+                }
+              }}
+            />
+          </div>
+        )}
       </div>
     </PageLayout>
   );

@@ -1,4 +1,3 @@
-
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { BanknoteIcon, CheckCircle2, Clock, XCircle } from "lucide-react";
@@ -25,7 +24,7 @@ const getPaymentStatusDetails = (status: PaymentStatus) => {
     case "pending":
       return {
         label: "Pendente",
-        variant: "warning" as const,
+        variant: "secondary" as const,
         icon: Clock,
       };
     case "overdue":
