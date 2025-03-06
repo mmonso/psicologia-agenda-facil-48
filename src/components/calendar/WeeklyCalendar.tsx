@@ -1,14 +1,24 @@
-
 import { useState, useMemo, useEffect } from "react";
 import { format, addDays, startOfWeek, isSameDay, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Plus, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Calendar, Menu, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { appointments, AppointmentStatus } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const TIME_SLOTS = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
@@ -108,37 +118,55 @@ export default function WeeklyCalendar() {
     return availableSlots.some(slot => slot.day === dayOfWeek && slot.time === timeSlot);
   };
 
-  // Alternar disponibilidade de um horário
-  const toggleSlotAvailability = (day: Date, timeSlot: string) => {
+  // Adicionar disponibilidade de um horário
+  const addSlotAvailability = (day: Date, timeSlot: string) => {
     const dayOfWeek = day.getDay() === 0 ? 6 : day.getDay() - 1; // Converter para 0-6 (seg-dom)
     
-    // Verificar se o horário já está disponível
-    const isAlreadyAvailable = availableSlots.some(
-      slot => slot.day === dayOfWeek && slot.time === timeSlot
+    // Adicionar disponibilidade
+    setAvailableSlots(prevSlots => [
+      ...prevSlots,
+      { day: dayOfWeek, time: timeSlot }
+    ]);
+    
+    toast({
+      title: "Horário disponibilizado",
+      description: `${format(day, "EEEE", { locale: ptBR })} às ${timeSlot} agora está disponível para consultas.`,
+    });
+  };
+  
+  // Remover disponibilidade de um horário
+  const removeSlotAvailability = (day: Date, timeSlot: string) => {
+    const dayOfWeek = day.getDay() === 0 ? 6 : day.getDay() - 1; // Converter para 0-6 (seg-dom)
+    
+    // Remover disponibilidade
+    setAvailableSlots(prevSlots => 
+      prevSlots.filter(
+        slot => !(slot.day === dayOfWeek && slot.time === timeSlot)
+      )
     );
     
-    if (isAlreadyAvailable) {
-      // Remover disponibilidade
-      setAvailableSlots(prevSlots => 
-        prevSlots.filter(
-          slot => !(slot.day === dayOfWeek && slot.time === timeSlot)
-        )
-      );
-      toast({
-        title: "Horário removido",
-        description: `${format(day, "EEEE", { locale: ptBR })} às ${timeSlot} não está mais disponível.`,
-      });
-    } else {
-      // Adicionar disponibilidade
-      setAvailableSlots(prevSlots => [
-        ...prevSlots,
-        { day: dayOfWeek, time: timeSlot }
-      ]);
-      toast({
-        title: "Horário disponibilizado",
-        description: `${format(day, "EEEE", { locale: ptBR })} às ${timeSlot} agora está disponível para consultas.`,
-      });
-    }
+    toast({
+      title: "Horário removido",
+      description: `${format(day, "EEEE", { locale: ptBR })} às ${timeSlot} não está mais disponível.`,
+    });
+  };
+
+  // Agendar nova consulta
+  const scheduleNewAppointment = (day: Date, timeSlot: string) => {
+    toast({
+      title: "Agendar nova consulta",
+      description: `${format(day, "EEEE", { locale: ptBR })} às ${timeSlot}`,
+    });
+    // Aqui viria a lógica para abrir um formulário de agendamento
+  };
+  
+  // Adicionar novo paciente
+  const addNewPatient = () => {
+    toast({
+      title: "Adicionar novo paciente",
+      description: "Abrindo formulário para adicionar novo paciente",
+    });
+    // Aqui viria a lógica para abrir um formulário de cadastro de paciente
   };
 
   // Get appointments for a specific day and time
@@ -276,16 +304,41 @@ export default function WeeklyCalendar() {
                           </div>
                         ))
                       ) : isAvailable ? (
-                        <div 
-                          className="h-full w-full flex items-center justify-center rounded-md border cursor-pointer hover:bg-accent/30 transition-colors"
-                          onClick={() => toggleSlotAvailability(day, timeSlot)}
-                        >
-                          <span className="text-xs text-muted-foreground">Disponível</span>
-                        </div>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <div className="h-full w-full flex items-center justify-center rounded-md border cursor-pointer hover:bg-accent/30 transition-colors">
+                              <span className="text-xs text-muted-foreground">Disponível</span>
+                            </div>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-60">
+                            <div className="grid gap-4">
+                              <div className="space-y-2">
+                                <h4 className="font-medium leading-none">Opções de agendamento</h4>
+                                <p className="text-sm text-muted-foreground">
+                                  {format(day, "EEEE", { locale: ptBR })} às {timeSlot}
+                                </p>
+                              </div>
+                              <div className="grid gap-2">
+                                <Button size="sm" onClick={() => scheduleNewAppointment(day, timeSlot)}>
+                                  <Calendar className="mr-2 h-4 w-4" />
+                                  Agendar consulta
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => addNewPatient()}>
+                                  <Plus className="mr-2 h-4 w-4" />
+                                  Adicionar novo paciente
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => removeSlotAvailability(day, timeSlot)}>
+                                  <X className="mr-2 h-4 w-4" />
+                                  Remover disponibilidade
+                                </Button>
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       ) : (
                         <div 
                           className="h-full w-full flex items-center justify-center cursor-pointer hover:bg-accent/10 transition-colors"
-                          onClick={() => toggleSlotAvailability(day, timeSlot)}
+                          onClick={() => addSlotAvailability(day, timeSlot)}
                         >
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
                             <Plus className="h-4 w-4 text-muted-foreground" />
