@@ -1,19 +1,26 @@
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format, addDays, startOfWeek, isSameDay, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { appointments, AppointmentStatus } from "@/lib/data";
+import { useToast } from "@/hooks/use-toast";
 
 const TIME_SLOTS = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
   "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
   "16:00", "16:30", "17:00", "17:30", "18:00"
 ];
+
+// Estrutura para armazenar horários disponíveis
+interface AvailableSlot {
+  day: number; // 0-6 (segunda a domingo)
+  time: string; // formato "HH:MM"
+}
 
 const getStatusDetails = (status: AppointmentStatus) => {
   switch (status) {
@@ -50,6 +57,8 @@ const getStatusDetails = (status: AppointmentStatus) => {
 
 export default function WeeklyCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
+  const { toast } = useToast();
   
   // Calculate week start date (starting from Monday)
   const weekStart = useMemo(() => {
@@ -60,6 +69,23 @@ export default function WeeklyCalendar() {
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }).map((_, index) => addDays(weekStart, index));
   }, [weekStart]);
+
+  // Carregar horários disponíveis do localStorage (se existir)
+  useEffect(() => {
+    const savedSlots = localStorage.getItem('availableSlots');
+    if (savedSlots) {
+      try {
+        setAvailableSlots(JSON.parse(savedSlots));
+      } catch (e) {
+        console.error('Erro ao carregar horários disponíveis:', e);
+      }
+    }
+  }, []);
+
+  // Salvar horários disponíveis no localStorage quando mudar
+  useEffect(() => {
+    localStorage.setItem('availableSlots', JSON.stringify(availableSlots));
+  }, [availableSlots]);
 
   // Go to previous week
   const goToPreviousWeek = () => {
@@ -74,6 +100,45 @@ export default function WeeklyCalendar() {
   // Go to current week
   const goToCurrentWeek = () => {
     setCurrentDate(new Date());
+  };
+
+  // Verificar se um horário está disponível
+  const isSlotAvailable = (day: Date, timeSlot: string) => {
+    const dayOfWeek = day.getDay() === 0 ? 6 : day.getDay() - 1; // Converter para 0-6 (seg-dom)
+    return availableSlots.some(slot => slot.day === dayOfWeek && slot.time === timeSlot);
+  };
+
+  // Alternar disponibilidade de um horário
+  const toggleSlotAvailability = (day: Date, timeSlot: string) => {
+    const dayOfWeek = day.getDay() === 0 ? 6 : day.getDay() - 1; // Converter para 0-6 (seg-dom)
+    
+    // Verificar se o horário já está disponível
+    const isAlreadyAvailable = availableSlots.some(
+      slot => slot.day === dayOfWeek && slot.time === timeSlot
+    );
+    
+    if (isAlreadyAvailable) {
+      // Remover disponibilidade
+      setAvailableSlots(prevSlots => 
+        prevSlots.filter(
+          slot => !(slot.day === dayOfWeek && slot.time === timeSlot)
+        )
+      );
+      toast({
+        title: "Horário removido",
+        description: `${format(day, "EEEE", { locale: ptBR })} às ${timeSlot} não está mais disponível.`,
+      });
+    } else {
+      // Adicionar disponibilidade
+      setAvailableSlots(prevSlots => [
+        ...prevSlots,
+        { day: dayOfWeek, time: timeSlot }
+      ]);
+      toast({
+        title: "Horário disponibilizado",
+        description: `${format(day, "EEEE", { locale: ptBR })} às ${timeSlot} agora está disponível para consultas.`,
+      });
+    }
   };
 
   // Get appointments for a specific day and time
@@ -113,7 +178,7 @@ export default function WeeklyCalendar() {
             <span className="sr-only">Próxima semana</span>
           </Button>
           <Button size="sm" className="button-bounce">
-            <Plus className="h-4 w-4 mr-1" />
+            <Calendar className="h-4 w-4 mr-1" />
             Nova Consulta
           </Button>
         </div>
@@ -163,6 +228,7 @@ export default function WeeklyCalendar() {
                 {weekDays.map((day, dayIndex) => {
                   const dayAppointments = getAppointmentsForDayAndTime(day, timeSlot);
                   const hasAppointment = dayAppointments.length > 0;
+                  const isAvailable = isSlotAvailable(day, timeSlot);
                   
                   return (
                     <div 
@@ -209,9 +275,22 @@ export default function WeeklyCalendar() {
                             </div>
                           </div>
                         ))
+                      ) : isAvailable ? (
+                        <div 
+                          className="h-full w-full flex items-center justify-center rounded-md border cursor-pointer hover:bg-accent/30 transition-colors"
+                          onClick={() => toggleSlotAvailability(day, timeSlot)}
+                        >
+                          <span className="text-xs text-muted-foreground">Disponível</span>
+                        </div>
                       ) : (
-                        <div className="h-full w-full flex items-center justify-center rounded-md border border-dashed">
-                          <span className="text-[10px] text-muted-foreground">Disponível</span>
+                        <div 
+                          className="h-full w-full flex items-center justify-center cursor-pointer hover:bg-accent/10 transition-colors"
+                          onClick={() => toggleSlotAvailability(day, timeSlot)}
+                        >
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                            <Plus className="h-4 w-4 text-muted-foreground" />
+                            <span className="sr-only">Adicionar disponibilidade</span>
+                          </Button>
                         </div>
                       )}
                     </div>
