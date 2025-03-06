@@ -1,19 +1,23 @@
 import { useState, useMemo, useEffect } from "react";
 import { format, addDays, startOfWeek, isSameDay, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Plus, Calendar, Menu, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Calendar, Menu, X, User, UserPlus, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { appointments, AppointmentStatus } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Popover,
   PopoverContent,
@@ -21,15 +25,20 @@ import {
 } from "@/components/ui/popover";
 
 const TIME_SLOTS = [
-  "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-  "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
-  "16:00", "16:30", "17:00", "17:30", "18:00"
+  "08:00", "09:00", "10:00", "11:00", "12:00", 
+  "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"
 ];
 
-// Estrutura para armazenar horários disponíveis
 interface AvailableSlot {
   day: number; // 0-6 (segunda a domingo)
   time: string; // formato "HH:MM"
+}
+
+interface NewPatient {
+  name: string;
+  email: string;
+  phone: string;
+  notes: string;
 }
 
 const getStatusDetails = (status: AppointmentStatus) => {
@@ -68,19 +77,24 @@ const getStatusDetails = (status: AppointmentStatus) => {
 export default function WeeklyCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<{ day: Date, time: string } | null>(null);
+  const [isNewPatientDialogOpen, setIsNewPatientDialogOpen] = useState(false);
+  const [newPatient, setNewPatient] = useState<NewPatient>({
+    name: "",
+    email: "",
+    phone: "",
+    notes: ""
+  });
   const { toast } = useToast();
   
-  // Calculate week start date (starting from Monday)
   const weekStart = useMemo(() => {
     return startOfWeek(currentDate, { weekStartsOn: 1 });
   }, [currentDate]);
   
-  // Generate array of dates for the week
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }).map((_, index) => addDays(weekStart, index));
   }, [weekStart]);
 
-  // Carregar horários disponíveis do localStorage (se existir)
   useEffect(() => {
     const savedSlots = localStorage.getItem('availableSlots');
     if (savedSlots) {
@@ -92,37 +106,30 @@ export default function WeeklyCalendar() {
     }
   }, []);
 
-  // Salvar horários disponíveis no localStorage quando mudar
   useEffect(() => {
     localStorage.setItem('availableSlots', JSON.stringify(availableSlots));
   }, [availableSlots]);
 
-  // Go to previous week
   const goToPreviousWeek = () => {
     setCurrentDate(addDays(weekStart, -7));
   };
 
-  // Go to next week
   const goToNextWeek = () => {
     setCurrentDate(addDays(weekStart, 7));
   };
 
-  // Go to current week
   const goToCurrentWeek = () => {
     setCurrentDate(new Date());
   };
 
-  // Verificar se um horário está disponível
   const isSlotAvailable = (day: Date, timeSlot: string) => {
     const dayOfWeek = day.getDay() === 0 ? 6 : day.getDay() - 1; // Converter para 0-6 (seg-dom)
     return availableSlots.some(slot => slot.day === dayOfWeek && slot.time === timeSlot);
   };
 
-  // Adicionar disponibilidade de um horário
   const addSlotAvailability = (day: Date, timeSlot: string) => {
     const dayOfWeek = day.getDay() === 0 ? 6 : day.getDay() - 1; // Converter para 0-6 (seg-dom)
     
-    // Adicionar disponibilidade
     setAvailableSlots(prevSlots => [
       ...prevSlots,
       { day: dayOfWeek, time: timeSlot }
@@ -134,11 +141,9 @@ export default function WeeklyCalendar() {
     });
   };
   
-  // Remover disponibilidade de um horário
   const removeSlotAvailability = (day: Date, timeSlot: string) => {
     const dayOfWeek = day.getDay() === 0 ? 6 : day.getDay() - 1; // Converter para 0-6 (seg-dom)
     
-    // Remover disponibilidade
     setAvailableSlots(prevSlots => 
       prevSlots.filter(
         slot => !(slot.day === dayOfWeek && slot.time === timeSlot)
@@ -149,27 +154,45 @@ export default function WeeklyCalendar() {
       title: "Horário removido",
       description: `${format(day, "EEEE", { locale: ptBR })} às ${timeSlot} não está mais disponível.`,
     });
+
+    setSelectedSlot(null);
   };
 
-  // Agendar nova consulta
   const scheduleNewAppointment = (day: Date, timeSlot: string) => {
     toast({
       title: "Agendar nova consulta",
       description: `${format(day, "EEEE", { locale: ptBR })} às ${timeSlot}`,
     });
-    // Aqui viria a lógica para abrir um formulário de agendamento
+    setSelectedSlot(null);
   };
   
-  // Adicionar novo paciente
-  const addNewPatient = () => {
-    toast({
-      title: "Adicionar novo paciente",
-      description: "Abrindo formulário para adicionar novo paciente",
-    });
-    // Aqui viria a lógica para abrir um formulário de cadastro de paciente
+  const openNewPatientDialog = () => {
+    setIsNewPatientDialogOpen(true);
   };
 
-  // Get appointments for a specific day and time
+  const handleNewPatientChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setNewPatient(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const saveNewPatient = () => {
+    toast({
+      title: "Paciente adicionado",
+      description: `${newPatient.name} foi adicionado com sucesso.`,
+    });
+    
+    setNewPatient({
+      name: "",
+      email: "",
+      phone: "",
+      notes: ""
+    });
+    setIsNewPatientDialogOpen(false);
+  };
+
   const getAppointmentsForDayAndTime = (day: Date, timeSlot: string) => {
     const [hours, minutes] = timeSlot.split(':').map(Number);
     
@@ -214,9 +237,8 @@ export default function WeeklyCalendar() {
       <CardContent>
         <div className="overflow-x-auto">
           <div className="min-w-[800px]">
-            {/* Days of the week */}
             <div className="grid grid-cols-8 gap-1">
-              <div className="h-12"></div> {/* Empty cell for time column */}
+              <div className="h-12"></div>
               {weekDays.map((day, index) => (
                 <div 
                   key={index} 
@@ -238,7 +260,6 @@ export default function WeeklyCalendar() {
               ))}
             </div>
 
-            {/* Time slots */}
             {TIME_SLOTS.map((timeSlot, timeIndex) => (
               <div 
                 key={timeSlot} 
@@ -247,12 +268,10 @@ export default function WeeklyCalendar() {
                   timeSlot.endsWith("00") ? "bg-white" : "bg-gray-50/50"
                 )}
               >
-                {/* Time label */}
                 <div className="px-2 py-3 text-xs text-muted-foreground text-right">
                   {timeSlot}
                 </div>
                 
-                {/* Day cells */}
                 {weekDays.map((day, dayIndex) => {
                   const dayAppointments = getAppointmentsForDayAndTime(day, timeSlot);
                   const hasAppointment = dayAppointments.length > 0;
@@ -304,37 +323,12 @@ export default function WeeklyCalendar() {
                           </div>
                         ))
                       ) : isAvailable ? (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <div className="h-full w-full flex items-center justify-center rounded-md border cursor-pointer hover:bg-accent/30 transition-colors">
-                              <span className="text-xs text-muted-foreground">Disponível</span>
-                            </div>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-60">
-                            <div className="grid gap-4">
-                              <div className="space-y-2">
-                                <h4 className="font-medium leading-none">Opções de agendamento</h4>
-                                <p className="text-sm text-muted-foreground">
-                                  {format(day, "EEEE", { locale: ptBR })} às {timeSlot}
-                                </p>
-                              </div>
-                              <div className="grid gap-2">
-                                <Button size="sm" onClick={() => scheduleNewAppointment(day, timeSlot)}>
-                                  <Calendar className="mr-2 h-4 w-4" />
-                                  Agendar consulta
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => addNewPatient()}>
-                                  <Plus className="mr-2 h-4 w-4" />
-                                  Adicionar novo paciente
-                                </Button>
-                                <Button size="sm" variant="destructive" onClick={() => removeSlotAvailability(day, timeSlot)}>
-                                  <X className="mr-2 h-4 w-4" />
-                                  Remover disponibilidade
-                                </Button>
-                              </div>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
+                        <div 
+                          className="h-full w-full flex items-center justify-center rounded-md border cursor-pointer hover:bg-accent/30 transition-colors"
+                          onClick={() => setSelectedSlot({ day, time: timeSlot })}
+                        >
+                          <span className="text-xs text-muted-foreground">Disponível</span>
+                        </div>
                       ) : (
                         <div 
                           className="h-full w-full flex items-center justify-center cursor-pointer hover:bg-accent/10 transition-colors"
@@ -354,6 +348,114 @@ export default function WeeklyCalendar() {
           </div>
         </div>
       </CardContent>
+
+      {selectedSlot && (
+        <Dialog open={!!selectedSlot} onOpenChange={() => setSelectedSlot(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Opções de Agendamento</DialogTitle>
+              <DialogDescription>
+                {selectedSlot ? `${format(selectedSlot.day, "EEEE, dd 'de' MMMM", { locale: ptBR })} às ${selectedSlot.time}` : ""}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <Button 
+                onClick={() => selectedSlot && scheduleNewAppointment(selectedSlot.day, selectedSlot.time)}
+                className="flex items-center justify-start"
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                Agendar consulta
+              </Button>
+              <Button 
+                onClick={openNewPatientDialog} 
+                variant="outline"
+                className="flex items-center justify-start"
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                Adicionar novo paciente
+              </Button>
+              <Button 
+                onClick={() => selectedSlot && removeSlotAvailability(selectedSlot.day, selectedSlot.time)} 
+                variant="destructive"
+                className="flex items-center justify-start"
+              >
+                <X className="mr-2 h-4 w-4" />
+                Remover disponibilidade
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      <Dialog open={isNewPatientDialogOpen} onOpenChange={setIsNewPatientDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adicionar Novo Paciente</DialogTitle>
+            <DialogDescription>
+              Preencha as informações do novo paciente abaixo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="name" className="text-right text-sm font-medium">
+                Nome
+              </label>
+              <Input
+                id="name"
+                name="name"
+                value={newPatient.name}
+                onChange={handleNewPatientChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="email" className="text-right text-sm font-medium">
+                Email
+              </label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={newPatient.email}
+                onChange={handleNewPatientChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="phone" className="text-right text-sm font-medium">
+                Telefone
+              </label>
+              <Input
+                id="phone"
+                name="phone"
+                value={newPatient.phone}
+                onChange={handleNewPatientChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="notes" className="text-right text-sm font-medium">
+                Observações
+              </label>
+              <Textarea
+                id="notes"
+                name="notes"
+                value={newPatient.notes}
+                onChange={handleNewPatientChange}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsNewPatientDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" onClick={saveNewPatient}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
