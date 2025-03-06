@@ -1,8 +1,7 @@
-
 import { useState, useMemo, useEffect } from "react";
 import { format, addDays, startOfWeek, isSameDay, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Plus, Calendar, Menu, X, User, UserPlus, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Calendar, X, UserPlus, Clock, Edit, Repeat } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +25,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 
 const TIME_SLOTS = [
   "08:00", "09:00", "10:00", "11:00", "12:00", 
@@ -42,6 +44,18 @@ interface NewPatient {
   email: string;
   phone: string;
   notes: string;
+}
+
+interface Appointment {
+  id: string;
+  patientId: string;
+  patientName: string;
+  date: Date;
+  duration: number;
+  status: AppointmentStatus;
+  notes: string;
+  paid: boolean;
+  isRecurring?: boolean;
 }
 
 const getStatusDetails = (status: AppointmentStatus) => {
@@ -89,7 +103,11 @@ export default function WeeklyCalendar() {
     notes: ""
   });
   const [selectedPatientId, setSelectedPatientId] = useState<string>("");
-  const [appointments, setAppointments] = useState<typeof mockAppointments>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [appointmentNotes, setAppointmentNotes] = useState("");
   const { toast } = useToast();
   
   const weekStart = useMemo(() => {
@@ -118,6 +136,8 @@ export default function WeeklyCalendar() {
       } catch (e) {
         console.error('Erro ao carregar consultas:', e);
       }
+    } else {
+      setAppointments([]); // Start with empty appointments
     }
   }, []);
 
@@ -177,6 +197,25 @@ export default function WeeklyCalendar() {
     setSelectedSlot(null);
   };
 
+  const createRecurringAppointments = (baseAppointment: Appointment) => {
+    // Create appointments for the next 8 weeks
+    const recurringAppointments = [];
+    
+    for (let i = 1; i <= 8; i++) {
+      const futureDate = new Date(baseAppointment.date);
+      futureDate.setDate(futureDate.getDate() + (i * 7)); // Add weeks
+      
+      recurringAppointments.push({
+        ...baseAppointment,
+        id: `${baseAppointment.id}-week-${i}`,
+        date: futureDate,
+        isRecurring: true
+      });
+    }
+    
+    return recurringAppointments;
+  };
+
   const scheduleNewAppointment = () => {
     if (!selectedSlot || !selectedPatientId) {
       toast({
@@ -189,51 +228,63 @@ export default function WeeklyCalendar() {
     const patient = patients.find(p => p.id === selectedPatientId);
     if (!patient) return;
     
+    const appointmentDate = new Date(selectedSlot.day);
+    appointmentDate.setHours(
+      Number(selectedSlot.time.split(':')[0]),
+      Number(selectedSlot.time.split(':')[1])
+    );
+    
     const newAppointment = {
       id: `a${Date.now()}`,
       patientId: patient.id,
       patientName: patient.name,
-      date: new Date(selectedSlot.day.setHours(
-        Number(selectedSlot.time.split(':')[0]),
-        Number(selectedSlot.time.split(':')[1])
-      )),
+      date: appointmentDate,
       duration: 50,
       status: "scheduled" as AppointmentStatus,
-      notes: "",
-      paid: false
+      notes: appointmentNotes,
+      paid: false,
+      isRecurring: isRecurring
     };
     
-    setAppointments(prev => [...prev, newAppointment]);
+    let newAppointments = [newAppointment];
+    
+    // If recurring, create additional appointments
+    if (isRecurring) {
+      const recurringAppointments = createRecurringAppointments(newAppointment);
+      newAppointments = [...newAppointments, ...recurringAppointments];
+    }
+    
+    setAppointments(prev => [...prev, ...newAppointments]);
     
     // Remove the slot from available slots since it's now booked
     removeSlotAvailability(selectedSlot.day, selectedSlot.time);
     
     toast({
       title: "Consulta agendada",
-      description: `${patient.name} - ${format(selectedSlot.day, "EEEE", { locale: ptBR })} às ${selectedSlot.time}`,
+      description: `${patient.name} - ${format(selectedSlot.day, "EEEE", { locale: ptBR })} às ${selectedSlot.time}${isRecurring ? " (recorrente)" : ""}`,
     });
     
     setSelectedPatientId("");
     setSelectedSlot(null);
+    setIsRecurring(false);
+    setAppointmentNotes("");
   };
   
   const reserveTimeSlot = () => {
     if (!selectedSlot) return;
     
-    toast({
-      title: "Horário reservado",
-      description: `${format(selectedSlot.day, "EEEE", { locale: ptBR })} às ${selectedSlot.time} foi reservado.`,
-    });
+    const appointmentDate = new Date(selectedSlot.day);
+    appointmentDate.setHours(
+      Number(selectedSlot.time.split(':')[0]),
+      Number(selectedSlot.time.split(':')[1])
+    );
     
     // Create a reserved appointment without a patient
     const newAppointment = {
       id: `reserved-${Date.now()}`,
       patientId: "reserved",
       patientName: "Horário Reservado",
-      date: new Date(selectedSlot.day.setHours(
-        Number(selectedSlot.time.split(':')[0]),
-        Number(selectedSlot.time.split(':')[1])
-      )),
+      date: appointmentDate,
       duration: 50,
       status: "scheduled" as AppointmentStatus,
       notes: "Horário reservado",
@@ -244,6 +295,12 @@ export default function WeeklyCalendar() {
     
     // Remove the slot from available slots
     removeSlotAvailability(selectedSlot.day, selectedSlot.time);
+    
+    toast({
+      title: "Horário reservado",
+      description: `${format(selectedSlot.day, "EEEE", { locale: ptBR })} às ${selectedSlot.time} foi reservado.`,
+    });
+    
     setSelectedSlot(null);
   };
   
@@ -260,17 +317,22 @@ export default function WeeklyCalendar() {
   };
 
   const saveNewPatient = () => {
+    // In a real app, we would save this to the database
+    // For now we'll just show a toast and close the dialog
     toast({
       title: "Paciente adicionado",
       description: `${newPatient.name} foi adicionado com sucesso.`,
     });
     
+    // Reset the form
     setNewPatient({
       name: "",
       email: "",
       phone: "",
       notes: ""
     });
+    
+    // Close new patient dialog and keep appointment dialog open
     setIsNewPatientDialogOpen(false);
   };
 
@@ -285,6 +347,119 @@ export default function WeeklyCalendar() {
         appointmentDate.getMinutes() === minutes
       );
     });
+  };
+  
+  const handleAppointmentClick = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setIsEditMode(true);
+    setSelectedPatientId(appointment.patientId);
+    setIsRecurring(appointment.isRecurring || false);
+    setAppointmentNotes(appointment.notes);
+  };
+  
+  const updateAppointment = () => {
+    if (!selectedAppointment) return;
+    
+    const updatedAppointments = appointments.map(appointment => {
+      if (appointment.id === selectedAppointment.id) {
+        return {
+          ...appointment,
+          patientId: selectedPatientId || appointment.patientId,
+          patientName: patients.find(p => p.id === selectedPatientId)?.name || appointment.patientName,
+          notes: appointmentNotes,
+          isRecurring: isRecurring
+        };
+      }
+      return appointment;
+    });
+    
+    setAppointments(updatedAppointments);
+    
+    toast({
+      title: "Consulta atualizada",
+      description: "Os detalhes da consulta foram atualizados com sucesso.",
+    });
+    
+    resetDialogState();
+  };
+  
+  const cancelAppointment = () => {
+    if (!selectedAppointment) return;
+    
+    const updatedAppointments = appointments.map(appointment => {
+      if (appointment.id === selectedAppointment.id) {
+        return {
+          ...appointment,
+          status: "canceled" as AppointmentStatus
+        };
+      }
+      return appointment;
+    });
+    
+    setAppointments(updatedAppointments);
+    
+    toast({
+      title: "Consulta cancelada",
+      description: "A consulta foi cancelada com sucesso.",
+    });
+    
+    resetDialogState();
+  };
+  
+  const completeAppointment = () => {
+    if (!selectedAppointment) return;
+    
+    const updatedAppointments = appointments.map(appointment => {
+      if (appointment.id === selectedAppointment.id) {
+        return {
+          ...appointment,
+          status: "completed" as AppointmentStatus,
+          paid: true
+        };
+      }
+      return appointment;
+    });
+    
+    setAppointments(updatedAppointments);
+    
+    toast({
+      title: "Consulta realizada",
+      description: "A consulta foi marcada como realizada e paga.",
+    });
+    
+    resetDialogState();
+  };
+  
+  const markNoShow = () => {
+    if (!selectedAppointment) return;
+    
+    const updatedAppointments = appointments.map(appointment => {
+      if (appointment.id === selectedAppointment.id) {
+        return {
+          ...appointment,
+          status: "no-show" as AppointmentStatus
+        };
+      }
+      return appointment;
+    });
+    
+    setAppointments(updatedAppointments);
+    
+    toast({
+      title: "Não compareceu",
+      description: "O paciente foi marcado como não compareceu.",
+    });
+    
+    resetDialogState();
+  };
+  
+  const resetDialogState = () => {
+    setSelectedAppointment(null);
+    setIsEditMode(false);
+    setSelectedPatientId("");
+    setIsRecurring(false);
+    setAppointmentNotes("");
+    setSelectedSlot(null);
   };
 
   return (
@@ -340,10 +515,7 @@ export default function WeeklyCalendar() {
             {TIME_SLOTS.map((timeSlot, timeIndex) => (
               <div 
                 key={timeSlot} 
-                className={cn(
-                  "grid grid-cols-8 gap-1 border-t",
-                  timeSlot.endsWith("00") ? "bg-white" : "bg-gray-50/50"
-                )}
+                className="grid grid-cols-8 gap-1 border-t bg-white"
               >
                 <div className="px-2 py-3 text-xs text-muted-foreground text-right">
                   {timeSlot}
@@ -373,9 +545,13 @@ export default function WeeklyCalendar() {
                               appointment.status === "canceled" && "border-l-destructive bg-destructive/10",
                               appointment.status === "no-show" && "border-l-amber-500 bg-amber-500/10"
                             )}
+                            onClick={() => handleAppointmentClick(appointment)}
                           >
-                            <div className="font-medium truncate">
+                            <div className="font-medium truncate flex items-center">
                               {appointment.patientName}
+                              {appointment.isRecurring && (
+                                <Repeat className="h-3 w-3 ml-1 opacity-70" />
+                              )}
                             </div>
                             <div className="flex items-center gap-1 mt-1">
                               <Badge
@@ -401,10 +577,10 @@ export default function WeeklyCalendar() {
                         ))
                       ) : isAvailable ? (
                         <div 
-                          className="h-full w-full flex items-center justify-center rounded-md border cursor-pointer hover:bg-accent/30 transition-colors"
+                          className="h-full w-full flex items-center justify-center rounded-md border-dashed border border-primary/40 cursor-pointer hover:bg-primary/10 transition-colors"
                           onClick={() => setSelectedSlot({ day, time: timeSlot })}
                         >
-                          <span className="text-xs text-muted-foreground">Disponível</span>
+                          <span className="text-xs text-primary">Disponível</span>
                         </div>
                       ) : (
                         <div 
@@ -426,8 +602,9 @@ export default function WeeklyCalendar() {
         </div>
       </CardContent>
 
-      {selectedSlot && (
-        <Dialog open={!!selectedSlot} onOpenChange={() => setSelectedSlot(null)}>
+      {/* Dialog for scheduling an appointment */}
+      {selectedSlot && !isEditMode && (
+        <Dialog open={!!selectedSlot && !isEditMode} onOpenChange={() => resetDialogState()}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Opções de Agendamento</DialogTitle>
@@ -435,16 +612,17 @@ export default function WeeklyCalendar() {
                 {selectedSlot ? `${format(selectedSlot.day, "EEEE, dd 'de' MMMM", { locale: ptBR })} às ${selectedSlot.time}` : ""}
               </DialogDescription>
             </DialogHeader>
+            
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <label htmlFor="patient-select" className="text-sm font-medium">
+                <Label htmlFor="patient-select" className="text-sm font-medium">
                   Selecione o paciente
-                </label>
+                </Label>
                 <Select
                   value={selectedPatientId}
                   onValueChange={setSelectedPatientId}
                 >
-                  <SelectTrigger id="patient-select">
+                  <SelectTrigger id="patient-select" className="w-full">
                     <SelectValue placeholder="Selecione um paciente" />
                   </SelectTrigger>
                   <SelectContent>
@@ -456,42 +634,175 @@ export default function WeeklyCalendar() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button 
-                onClick={scheduleNewAppointment}
-                className="flex items-center justify-start"
-              >
-                <Calendar className="mr-2 h-4 w-4" />
-                Agendar consulta
-              </Button>
-              <Button 
-                onClick={reserveTimeSlot}
-                variant="outline"
-                className="flex items-center justify-start"
-              >
-                <Clock className="mr-2 h-4 w-4" />
-                Reservar horário
-              </Button>
-              <Button 
-                onClick={openNewPatientDialog} 
-                variant="outline"
-                className="flex items-center justify-start"
-              >
-                <UserPlus className="mr-2 h-4 w-4" />
-                Adicionar novo paciente
-              </Button>
-              <Button 
-                onClick={() => selectedSlot && removeSlotAvailability(selectedSlot.day, selectedSlot.time)} 
-                variant="destructive"
-                className="flex items-center justify-start"
-              >
-                <X className="mr-2 h-4 w-4" />
-                Remover disponibilidade
-              </Button>
+              
+              <div className="space-y-2">
+                <Label htmlFor="notes" className="text-sm font-medium">Observações</Label>
+                <Textarea 
+                  id="notes" 
+                  placeholder="Adicione observações sobre esta consulta"
+                  value={appointmentNotes}
+                  onChange={(e) => setAppointmentNotes(e.target.value)}
+                  className="resize-none"
+                />
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="recurring" 
+                  checked={isRecurring}
+                  onCheckedChange={setIsRecurring}
+                />
+                <Label htmlFor="recurring" className="text-sm font-medium">
+                  Consulta recorrente (semanal)
+                </Label>
+              </div>
+              
+              <Separator className="my-2" />
+              
+              <div className="space-y-2">
+                <Button 
+                  onClick={scheduleNewAppointment}
+                  className="w-full flex items-center justify-center gap-2"
+                >
+                  <Calendar className="h-4 w-4" />
+                  Agendar consulta
+                </Button>
+                
+                <Button 
+                  onClick={reserveTimeSlot}
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2"
+                >
+                  <Clock className="h-4 w-4" />
+                  Reservar horário
+                </Button>
+                
+                <Button 
+                  onClick={openNewPatientDialog} 
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Adicionar novo paciente
+                </Button>
+                
+                <Button 
+                  onClick={() => selectedSlot && removeSlotAvailability(selectedSlot.day, selectedSlot.time)} 
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                >
+                  <X className="h-4 w-4" />
+                  Remover disponibilidade
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
       )}
 
+      {/* Dialog for editing an appointment */}
+      {isEditMode && selectedAppointment && (
+        <Dialog open={isEditMode && !!selectedAppointment} onOpenChange={() => resetDialogState()}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Gerenciar Consulta</DialogTitle>
+              <DialogDescription>
+                {format(new Date(selectedAppointment.date), "EEEE, dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-patient-select" className="text-sm font-medium">
+                  Paciente
+                </Label>
+                <Select
+                  value={selectedPatientId}
+                  onValueChange={setSelectedPatientId}
+                  disabled={selectedAppointment.patientId === "reserved"}
+                >
+                  <SelectTrigger id="edit-patient-select" className="w-full">
+                    <SelectValue placeholder="Selecione um paciente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {patients.map((patient) => (
+                      <SelectItem key={patient.id} value={patient.id}>
+                        {patient.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-notes" className="text-sm font-medium">Observações</Label>
+                <Textarea 
+                  id="edit-notes" 
+                  placeholder="Adicione observações sobre esta consulta"
+                  value={appointmentNotes}
+                  onChange={(e) => setAppointmentNotes(e.target.value)}
+                  className="resize-none"
+                />
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="edit-recurring" 
+                  checked={isRecurring}
+                  onCheckedChange={setIsRecurring}
+                />
+                <Label htmlFor="edit-recurring" className="text-sm font-medium">
+                  Consulta recorrente (semanal)
+                </Label>
+              </div>
+              
+              <Separator className="my-2" />
+              
+              <div className="grid grid-cols-2 gap-2">
+                <Button 
+                  onClick={updateAppointment}
+                  className="flex items-center justify-center gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  Atualizar
+                </Button>
+                
+                <Button 
+                  onClick={completeAppointment}
+                  variant="outline"
+                  className="flex items-center justify-center gap-2 border-green-500/50 text-green-600 hover:bg-green-500/10"
+                  disabled={selectedAppointment.status === "completed"}
+                >
+                  <Calendar className="h-4 w-4" />
+                  Realizada
+                </Button>
+                
+                <Button 
+                  onClick={cancelAppointment}
+                  variant="outline"
+                  className="flex items-center justify-center gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                  disabled={selectedAppointment.status === "canceled"}
+                >
+                  <X className="h-4 w-4" />
+                  Cancelar
+                </Button>
+                
+                <Button 
+                  onClick={markNoShow}
+                  variant="outline"
+                  className="flex items-center justify-center gap-2 border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
+                  disabled={selectedAppointment.status === "no-show"}
+                >
+                  <Clock className="h-4 w-4" />
+                  Não compareceu
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Dialog for adding a new patient */}
       <Dialog open={isNewPatientDialogOpen} onOpenChange={setIsNewPatientDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -500,54 +811,54 @@ export default function WeeklyCalendar() {
               Preencha as informações do novo paciente abaixo.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="name" className="text-right text-sm font-medium">
-                Nome
-              </label>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-sm font-medium">
+                Nome completo
+              </Label>
               <Input
                 id="name"
                 name="name"
                 value={newPatient.name}
                 onChange={handleNewPatientChange}
-                className="col-span-3"
+                className="w-full"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="email" className="text-right text-sm font-medium">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium">
                 Email
-              </label>
+              </Label>
               <Input
                 id="email"
                 name="email"
                 type="email"
                 value={newPatient.email}
                 onChange={handleNewPatientChange}
-                className="col-span-3"
+                className="w-full"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="phone" className="text-right text-sm font-medium">
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="text-sm font-medium">
                 Telefone
-              </label>
+              </Label>
               <Input
                 id="phone"
                 name="phone"
                 value={newPatient.phone}
                 onChange={handleNewPatientChange}
-                className="col-span-3"
+                className="w-full"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="notes" className="text-right text-sm font-medium">
+            <div className="space-y-2">
+              <Label htmlFor="notes" className="text-sm font-medium">
                 Observações
-              </label>
+              </Label>
               <Textarea
                 id="notes"
                 name="notes"
                 value={newPatient.notes}
                 onChange={handleNewPatientChange}
-                className="col-span-3"
+                className="w-full resize-none"
               />
             </div>
           </div>
