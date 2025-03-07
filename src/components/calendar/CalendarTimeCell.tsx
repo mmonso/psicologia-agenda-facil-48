@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { AppointmentStatus } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { Repeat } from "lucide-react";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
 interface Appointment {
   id: string;
@@ -52,7 +53,7 @@ export default function CalendarTimeCell({
   return (
     <div 
       className={cn(
-        "min-h-[60px] p-1 relative",
+        "min-h-[60px] p-1 relative group",
         isToday(day) && "bg-primary/5"
       )}
     >
@@ -109,7 +110,11 @@ export default function CalendarTimeCell({
           className="h-full w-full flex items-center justify-center cursor-pointer hover:bg-accent/10 transition-colors"
           onClick={onAddAvailability}
         >
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
             <Plus className="h-3 w-3 text-slate-300" />
             <span className="sr-only">Adicionar disponibilidade</span>
           </Button>
