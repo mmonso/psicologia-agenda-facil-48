@@ -20,13 +20,17 @@ import {
   Dialog, 
   DialogContent, 
   DialogHeader, 
-  DialogTitle 
+  DialogTitle,
+  DialogDescription,
+  DialogFooter 
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
 
 const getStatusBadge = (status: Patient["status"]) => {
   switch (status) {
@@ -60,9 +64,12 @@ export default function Patients() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [medicalNotes, setMedicalNotes] = useState<string>("");
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedPatient, setEditedPatient] = useState<Patient | null>(null);
+  const [localPatients, setLocalPatients] = useState<Patient[]>(patients);
 
   // Filter patients based on search term
-  const filteredPatients = patients.filter((patient) => {
+  const filteredPatients = localPatients.filter((patient) => {
     return (
       patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       patient.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -73,6 +80,7 @@ export default function Patients() {
   // Handle patient selection
   const handlePatientSelect = (patient: Patient) => {
     setSelectedPatient(patient);
+    setIsEditMode(false);
     // In a real app, you would fetch medical notes from the backend
     setMedicalNotes(patient.notes);
   };
@@ -80,6 +88,69 @@ export default function Patients() {
   // Close patient dialog
   const handleCloseDialog = () => {
     setSelectedPatient(null);
+    setIsEditMode(false);
+    setEditedPatient(null);
+  };
+
+  // Enable edit mode
+  const handleEnableEditMode = () => {
+    if (selectedPatient) {
+      setEditedPatient({...selectedPatient});
+      setIsEditMode(true);
+    }
+  };
+
+  // Handle edit inputs change
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (editedPatient) {
+      setEditedPatient({
+        ...editedPatient,
+        [e.target.name]: e.target.value
+      });
+    }
+  };
+
+  // Handle status change
+  const handleStatusChange = (status: Patient["status"]) => {
+    if (editedPatient) {
+      setEditedPatient({
+        ...editedPatient,
+        status
+      });
+    }
+  };
+
+  // Save edited patient
+  const handleSavePatient = () => {
+    if (editedPatient) {
+      // In a real app, you would save to backend here
+      setLocalPatients(localPatients.map(p => 
+        p.id === editedPatient.id ? editedPatient : p
+      ));
+      
+      setSelectedPatient(editedPatient);
+      setIsEditMode(false);
+      toast.success("Informações do paciente atualizadas com sucesso!");
+    }
+  };
+
+  // Save medical notes
+  const handleSaveMedicalNotes = () => {
+    if (selectedPatient) {
+      // Update the patient's notes
+      const updatedPatient = {
+        ...selectedPatient,
+        notes: medicalNotes
+      };
+      
+      // Update local patients state
+      setLocalPatients(localPatients.map(p => 
+        p.id === selectedPatient.id ? updatedPatient : p
+      ));
+      
+      setSelectedPatient(updatedPatient);
+      toast.success("Prontuário médico atualizado com sucesso!");
+    }
   };
 
   // Get patient's appointments
@@ -92,8 +163,8 @@ export default function Patients() {
       <div className="space-y-6">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <h1 className="text-3xl font-bold tracking-tight">Pacientes</h1>
-          <Button className="button-bounce">
-            <Plus className="mr-2 h-4 w-4" />
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
             Novo Paciente
           </Button>
         </div>
@@ -118,7 +189,7 @@ export default function Patients() {
                   <TableHead>Contato</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Data de início</TableHead>
-                  <TableHead>Consultas</TableHead>
+                  <TableHead>Sessões</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -159,7 +230,7 @@ export default function Patients() {
                         <TableCell>
                           {formatDate(patient.startDate, "dd/MM/yyyy")}
                         </TableCell>
-                        <TableCell>{patientAppointments.length}</TableCell>
+                        <TableCell>{patient.totalSessions}</TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
@@ -191,65 +262,178 @@ export default function Patients() {
                     {getInitials(selectedPatient.name)}
                   </AvatarFallback>
                 </Avatar>
-                <span>{selectedPatient.name}</span>
-                {getStatusBadge(selectedPatient.status)}
+                <span>{isEditMode ? editedPatient?.name : selectedPatient.name}</span>
+                {isEditMode ? (
+                  <div className="flex gap-2">
+                    <Badge 
+                      variant="outline" 
+                      className={cn(
+                        "cursor-pointer",
+                        editedPatient?.status === "active" && "bg-green-500"
+                      )}
+                      onClick={() => handleStatusChange("active")}
+                    >
+                      Ativo
+                    </Badge>
+                    <Badge 
+                      variant="outline" 
+                      className={cn(
+                        "cursor-pointer",
+                        editedPatient?.status === "inactive" && "bg-muted"
+                      )}
+                      onClick={() => handleStatusChange("inactive")}
+                    >
+                      Inativo
+                    </Badge>
+                    <Badge 
+                      variant="outline" 
+                      className={cn(
+                        "cursor-pointer",
+                        editedPatient?.status === "waiting" && "bg-amber-500"
+                      )}
+                      onClick={() => handleStatusChange("waiting")}
+                    >
+                      Em espera
+                    </Badge>
+                  </div>
+                ) : (
+                  getStatusBadge(selectedPatient.status)
+                )}
               </DialogTitle>
             </DialogHeader>
 
             <Tabs defaultValue="info" className="mt-2">
               <TabsList>
                 <TabsTrigger value="info">Informações</TabsTrigger>
-                <TabsTrigger value="appointments">Consultas</TabsTrigger>
+                <TabsTrigger value="appointments">Sessões</TabsTrigger>
                 <TabsTrigger value="medical-record">Prontuário</TabsTrigger>
               </TabsList>
 
               <TabsContent value="info" className="space-y-4 pt-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h3 className="font-medium text-sm text-muted-foreground mb-1">Email</h3>
-                    <p>{selectedPatient.email}</p>
+                {isEditMode ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Nome</Label>
+                        <Input
+                          id="name"
+                          name="name"
+                          value={editedPatient?.name}
+                          onChange={handleEditChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          value={editedPatient?.email}
+                          onChange={handleEditChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Telefone</Label>
+                        <Input
+                          id="phone"
+                          name="phone"
+                          value={editedPatient?.phone}
+                          onChange={handleEditChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="totalSessions">Total de sessões</Label>
+                        <Input
+                          id="totalSessions"
+                          name="totalSessions"
+                          type="number"
+                          value={editedPatient?.totalSessions}
+                          onChange={(e) => {
+                            if (editedPatient) {
+                              setEditedPatient({
+                                ...editedPatient,
+                                totalSessions: parseInt(e.target.value) || 0
+                              });
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="notes">Observações</Label>
+                      <Textarea
+                        id="notes"
+                        name="notes"
+                        value={editedPatient?.notes}
+                        onChange={handleEditChange}
+                      />
+                    </div>
+                    
+                    <div className="flex justify-end gap-2 mt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsEditMode(false)}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button onClick={handleSavePatient}>
+                        Salvar alterações
+                      </Button>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-medium text-sm text-muted-foreground mb-1">Telefone</h3>
-                    <p>{selectedPatient.phone}</p>
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-sm text-muted-foreground mb-1">Data de início</h3>
-                    <p>{formatDate(selectedPatient.startDate, "dd 'de' MMMM 'de' yyyy")}</p>
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-sm text-muted-foreground mb-1">Total de sessões</h3>
-                    <p>{selectedPatient.totalSessions}</p>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="font-medium text-sm text-muted-foreground mb-1">Observações</h3>
-                  <p>{selectedPatient.notes}</p>
-                </div>
-                
-                <div className="flex justify-end mt-4">
-                  <Button variant="outline">Editar informações</Button>
-                </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="font-medium text-sm text-muted-foreground mb-1">Email</h3>
+                        <p>{selectedPatient.email}</p>
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-sm text-muted-foreground mb-1">Telefone</h3>
+                        <p>{selectedPatient.phone}</p>
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-sm text-muted-foreground mb-1">Data de início</h3>
+                        <p>{formatDate(selectedPatient.startDate, "dd 'de' MMMM 'de' yyyy")}</p>
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-sm text-muted-foreground mb-1">Total de sessões</h3>
+                        <p>{selectedPatient.totalSessions}</p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="font-medium text-sm text-muted-foreground mb-1">Observações</h3>
+                      <p>{selectedPatient.notes}</p>
+                    </div>
+                    
+                    <div className="flex justify-end mt-4">
+                      <Button variant="outline" onClick={handleEnableEditMode}>
+                        Editar informações
+                      </Button>
+                    </div>
+                  </>
+                )}
               </TabsContent>
 
               <TabsContent value="appointments" className="pt-4">
                 {patientAppointments.length === 0 ? (
                   <div className="text-center py-10 text-muted-foreground">
                     <User className="mx-auto h-10 w-10 mb-2 opacity-20" />
-                    <p>Nenhuma consulta registrada para este paciente.</p>
+                    <p>Nenhuma sessão registrada para este paciente.</p>
                     <Button className="mt-4" variant="outline">
                       <Plus className="mr-2 h-4 w-4" />
-                      Agendar consulta
+                      Agendar sessão
                     </Button>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                      <h3 className="font-medium">Histórico de consultas</h3>
+                      <h3 className="font-medium">Histórico de sessões</h3>
                       <Button size="sm">
                         <Plus className="mr-2 h-4 w-4" />
-                        Agendar consulta
+                        Agendar sessão
                       </Button>
                     </div>
                     
@@ -333,7 +517,7 @@ export default function Patients() {
                     />
                     
                     <div className="flex justify-end mt-4">
-                      <Button>Salvar prontuário</Button>
+                      <Button onClick={handleSaveMedicalNotes}>Salvar prontuário</Button>
                     </div>
                   </div>
                   
