@@ -1,3 +1,4 @@
+
 import { useState, useMemo, useEffect } from "react";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -33,7 +34,8 @@ export default function WeeklyCalendar() {
   const { toast } = useToast();
   
   const weekStart = useMemo(() => {
-    return startOfWeek(currentDate, { weekStartsOn: 1 });
+    // Changed from weekStartsOn: 1 (Monday) to weekStartsOn: 0 (Sunday)
+    return startOfWeek(currentDate, { weekStartsOn: 0 });
   }, [currentDate]);
   
   const weekDays = useMemo(() => {
@@ -84,12 +86,14 @@ export default function WeeklyCalendar() {
   };
 
   const isSlotAvailable = (day: Date, timeSlot: string) => {
-    const dayOfWeek = day.getDay() === 0 ? 6 : day.getDay() - 1; // Converter para 0-6 (seg-dom)
+    // Update day of week calculation to match Sunday start (0-6, Sun-Sat)
+    const dayOfWeek = day.getDay();
     return availableSlots.some(slot => slot.day === dayOfWeek && slot.time === timeSlot);
   };
 
   const addSlotAvailability = (day: Date, timeSlot: string) => {
-    const dayOfWeek = day.getDay() === 0 ? 6 : day.getDay() - 1; // Converter para 0-6 (seg-dom)
+    // Update day of week calculation to match Sunday start (0-6, Sun-Sat)
+    const dayOfWeek = day.getDay();
     
     setAvailableSlots(prevSlots => [
       ...prevSlots,
@@ -103,7 +107,8 @@ export default function WeeklyCalendar() {
   };
   
   const removeSlotAvailability = (day: Date, timeSlot: string) => {
-    const dayOfWeek = day.getDay() === 0 ? 6 : day.getDay() - 1; // Converter para 0-6 (seg-dom)
+    // Update day of week calculation to match Sunday start (0-6, Sun-Sat)
+    const dayOfWeek = day.getDay();
     
     setAvailableSlots(prevSlots => 
       prevSlots.filter(

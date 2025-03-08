@@ -8,7 +8,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 // Pages
 import Dashboard from "./pages/Dashboard";
 import Patients from "./pages/Patients";
-import Appointments from "./pages/Appointments";
 import Payments from "./pages/Payments";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -33,7 +32,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/patients" element={<Patients />} />
-          <Route path="/appointments" element={<Appointments />} />
+          {/* Removed the /appointments route */}
           <Route path="/payments" element={<Payments />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />

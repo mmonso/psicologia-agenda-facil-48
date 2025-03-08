@@ -76,11 +76,7 @@ export function SideBar() {
             icon={Users}
             label="Pacientes"
           />
-          <NavItem
-            to="/appointments"
-            icon={Calendar}
-            label="Sessões"
-          />
+          {/* Removed the Appointments NavItem */}
           <NavItem
             to="/payments"
             icon={CreditCard}

@@ -30,6 +30,10 @@ import {
 import { PageLayout } from "@/components/layout/PageLayout";
 import { payments, PaymentStatus } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 const getStatusDetails = (status: PaymentStatus) => {
   switch (status) {
@@ -62,12 +66,48 @@ const getStatusDetails = (status: PaymentStatus) => {
   }
 };
 
+// Interface for payment data
+interface Payment {
+  id: string;
+  patientId: string;
+  patientName: string;
+  date: string;
+  amount: number;
+  status: PaymentStatus;
+  method: string;
+  notes: string;
+}
+
+// Interface for new payment form
+interface NewPayment {
+  patientId: string;
+  patientName: string;
+  date: Date;
+  amount: number;
+  status: PaymentStatus;
+  method: string;
+  notes: string;
+}
+
 export default function Payments() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<PaymentStatus | "all">("all");
   const [date, setDate] = useState<Date | undefined>(undefined);
+  const [localPayments, setLocalPayments] = useState<Payment[]>(payments);
+  
+  // New payment dialog
+  const [isNewPaymentDialogOpen, setIsNewPaymentDialogOpen] = useState(false);
+  const [newPayment, setNewPayment] = useState<NewPayment>({
+    patientId: "",
+    patientName: "",
+    date: new Date(),
+    amount: 0,
+    status: "paid",
+    method: "Pix",
+    notes: ""
+  });
 
-  const filteredPayments = payments.filter((payment) => {
+  const filteredPayments = localPayments.filter((payment) => {
     const matchesSearch =
       payment.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.notes.toLowerCase().includes(searchTerm.toLowerCase());
@@ -90,12 +130,78 @@ export default function Payments() {
     return sum;
   }, 0);
 
+  // Handle new payment dialog
+  const handleOpenNewPaymentDialog = () => {
+    setNewPayment({
+      patientId: "",
+      patientName: "",
+      date: new Date(),
+      amount: 0,
+      status: "paid",
+      method: "Pix",
+      notes: ""
+    });
+    setIsNewPaymentDialogOpen(true);
+  };
+
+  const handleCloseNewPaymentDialog = () => {
+    setIsNewPaymentDialogOpen(false);
+  };
+
+  const handleNewPaymentChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    
+    if (name === "amount") {
+      setNewPayment({
+        ...newPayment,
+        [name]: parseFloat(value) || 0
+      });
+    } else {
+      setNewPayment({
+        ...newPayment,
+        [name]: value
+      });
+    }
+  };
+
+  const handleSaveNewPayment = () => {
+    // Validate inputs
+    if (!newPayment.patientName.trim()) {
+      toast.error("Nome do paciente é obrigatório");
+      return;
+    }
+
+    if (newPayment.amount <= 0) {
+      toast.error("O valor deve ser maior que zero");
+      return;
+    }
+
+    // Create new payment
+    const newPaymentData: Payment = {
+      id: `payment-${Date.now()}`,
+      patientId: newPayment.patientId || `patient-${Date.now()}`,
+      patientName: newPayment.patientName,
+      date: newPayment.date.toISOString(),
+      amount: newPayment.amount,
+      status: newPayment.status,
+      method: newPayment.method,
+      notes: newPayment.notes
+    };
+
+    // Add to list
+    setLocalPayments([...localPayments, newPaymentData]);
+    
+    // Close dialog and show toast
+    handleCloseNewPaymentDialog();
+    toast.success("Pagamento adicionado com sucesso!");
+  };
+
   return (
     <PageLayout>
       <div className="space-y-6">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <h1 className="text-3xl font-bold tracking-tight">Pagamentos</h1>
-          <Button className="button-bounce">
+          <Button className="button-bounce" onClick={handleOpenNewPaymentDialog}>
             <Plus className="mr-2 h-4 w-4" />
             Novo Pagamento
           </Button>
@@ -148,7 +254,7 @@ export default function Payments() {
                   onSelect={setDate}
                   initialFocus
                   locale={ptBR}
-                  className="p-3"
+                  className="p-3 pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>
@@ -235,6 +341,132 @@ export default function Payments() {
           </Table>
         </div>
       </div>
+
+      {/* New Payment Dialog */}
+      <Dialog open={isNewPaymentDialogOpen} onOpenChange={setIsNewPaymentDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Novo Pagamento</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="patientName">Nome do Paciente</Label>
+              <Input
+                id="patientName"
+                name="patientName"
+                value={newPayment.patientName}
+                onChange={handleNewPaymentChange}
+                placeholder="Nome do paciente"
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="amount">Valor (R$)</Label>
+              <Input
+                id="amount"
+                name="amount"
+                type="number"
+                min="0"
+                step="0.01"
+                value={newPayment.amount}
+                onChange={handleNewPaymentChange}
+                placeholder="0.00"
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label>Data</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !newPayment.date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {newPayment.date ? (
+                      format(newPayment.date, "dd/MM/yyyy")
+                    ) : (
+                      <span>Selecione uma data</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 pointer-events-auto">
+                  <Calendar
+                    mode="single"
+                    selected={newPayment.date}
+                    onSelect={(date) => setNewPayment({ ...newPayment, date: date || new Date() })}
+                    initialFocus
+                    locale={ptBR}
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="method">Método de Pagamento</Label>
+              <Select 
+                name="method" 
+                value={newPayment.method}
+                onValueChange={(value) => setNewPayment({ ...newPayment, method: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Método de pagamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Pix">Pix</SelectItem>
+                  <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="Cartão de Crédito">Cartão de Crédito</SelectItem>
+                  <SelectItem value="Cartão de Débito">Cartão de Débito</SelectItem>
+                  <SelectItem value="Transferência">Transferência</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="status">Status</Label>
+              <Select 
+                name="status" 
+                value={newPayment.status}
+                onValueChange={(value) => setNewPayment({ ...newPayment, status: value as PaymentStatus })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Status do pagamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="paid">Pago</SelectItem>
+                  <SelectItem value="pending">Pendente</SelectItem>
+                  <SelectItem value="overdue">Atrasado</SelectItem>
+                  <SelectItem value="refunded">Reembolsado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="notes">Observações</Label>
+              <Textarea
+                id="notes"
+                name="notes"
+                value={newPayment.notes}
+                onChange={handleNewPaymentChange}
+                placeholder="Observações sobre o pagamento"
+                className="resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseNewPaymentDialog}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleSaveNewPayment}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 }
