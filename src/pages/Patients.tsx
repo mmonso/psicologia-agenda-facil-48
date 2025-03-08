@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Eye, Plus, Search, User } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -31,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
+import NewPatientDialog from "@/components/calendar/NewPatientDialog";
 
 const getStatusBadge = (status: Patient["status"]) => {
   switch (status) {
@@ -67,6 +67,15 @@ export default function Patients() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedPatient, setEditedPatient] = useState<Patient | null>(null);
   const [localPatients, setLocalPatients] = useState<Patient[]>(patients);
+  
+  // Estado para o novo paciente e o diálogo
+  const [isNewPatientDialogOpen, setIsNewPatientDialogOpen] = useState(false);
+  const [newPatient, setNewPatient] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    notes: ""
+  });
 
   // Filter patients based on search term
   const filteredPatients = localPatients.filter((patient) => {
@@ -153,6 +162,55 @@ export default function Patients() {
     }
   };
 
+  // Handle new patient dialog
+  const openNewPatientDialog = () => {
+    setNewPatient({
+      name: "",
+      email: "",
+      phone: "",
+      notes: ""
+    });
+    setIsNewPatientDialogOpen(true);
+  };
+
+  const closeNewPatientDialog = () => {
+    setIsNewPatientDialogOpen(false);
+  };
+
+  const handleNewPatientChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setNewPatient({
+      ...newPatient,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSaveNewPatient = () => {
+    // Validar entradas
+    if (!newPatient.name.trim()) {
+      toast.error("Nome do paciente é obrigatório");
+      return;
+    }
+
+    // Criar novo paciente
+    const newPatientData: Patient = {
+      id: `patient-${Date.now()}`,
+      name: newPatient.name,
+      email: newPatient.email,
+      phone: newPatient.phone,
+      startDate: new Date().toISOString(),
+      status: "active",
+      totalSessions: 0,
+      notes: newPatient.notes
+    };
+
+    // Adicionar à lista
+    setLocalPatients([...localPatients, newPatientData]);
+    
+    // Fechar diálogo e mostrar toast
+    closeNewPatientDialog();
+    toast.success("Paciente adicionado com sucesso!");
+  };
+
   // Get patient's appointments
   const patientAppointments = selectedPatient
     ? getPatientAppointments(selectedPatient.id)
@@ -163,7 +221,7 @@ export default function Patients() {
       <div className="space-y-6">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <h1 className="text-3xl font-bold tracking-tight">Pacientes</h1>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={openNewPatientDialog}>
             <Plus className="h-4 w-4" />
             Novo Paciente
           </Button>
@@ -547,6 +605,15 @@ export default function Patients() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* New Patient Dialog */}
+      <NewPatientDialog
+        open={isNewPatientDialogOpen}
+        onClose={closeNewPatientDialog}
+        onSave={handleSaveNewPatient}
+        newPatient={newPatient}
+        onChange={handleNewPatientChange}
+      />
     </PageLayout>
   );
 }
