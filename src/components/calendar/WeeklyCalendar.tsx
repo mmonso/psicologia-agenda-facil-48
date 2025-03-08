@@ -1,5 +1,5 @@
+
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { patients } from "@/lib/data";
 import { TIME_SLOTS, getStatusDetails } from "./utils";
 import AppointmentDialog from "./dialogs/AppointmentDialog";
 import EditAppointmentDialog from "./dialogs/EditAppointmentDialog";
@@ -107,7 +107,7 @@ export default function WeeklyCalendar() {
         open={!!selectedSlot && !isEditMode}
         selectedSlot={selectedSlot}
         onClose={resetDialogState}
-        onScheduleAppointment={() => scheduleNewAppointment(patients)}
+        onScheduleAppointment={scheduleNewAppointment}
         onReserveTimeSlot={reserveTimeSlot}
         onOpenNewPatientDialog={openNewPatientDialog}
         onRemoveAvailability={() => selectedSlot && removeSlotAvailability(selectedSlot.day, selectedSlot.time)}

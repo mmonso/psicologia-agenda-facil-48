@@ -2,18 +2,7 @@
 import { format, isSameDay } from "date-fns";
 import CalendarTimeCell from "./CalendarTimeCell";
 import { AppointmentStatus } from "@/lib/data";
-
-interface Appointment {
-  id: string;
-  patientId: string;
-  patientName: string;
-  date: Date;
-  duration: number;
-  status: AppointmentStatus;
-  notes: string;
-  paid: boolean;
-  isRecurring?: boolean;
-}
+import { Appointment } from "./utils";
 
 interface TimeSlotProps {
   timeSlots: string[];

@@ -1,3 +1,4 @@
+
 import { AppointmentStatus } from "@/lib/data";
 
 export interface Appointment {
@@ -13,7 +14,7 @@ export interface Appointment {
 }
 
 export interface AvailableSlot {
-  day: number; // 0-6 (segunda a domingo)
+  day: number; // 0-6 (domingo a sábado)
   time: string; // formato "HH:MM"
 }
 

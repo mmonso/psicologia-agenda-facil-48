@@ -28,7 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { payments, PaymentStatus } from "@/lib/data";
+import { payments as initialPayments, PaymentStatus } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -93,7 +93,14 @@ export default function Payments() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<PaymentStatus | "all">("all");
   const [date, setDate] = useState<Date | undefined>(undefined);
-  const [localPayments, setLocalPayments] = useState<Payment[]>(payments);
+  
+  // Convert the imported payments to match our Payment interface (with date as string)
+  const formattedInitialPayments: Payment[] = initialPayments.map(payment => ({
+    ...payment,
+    date: payment.date instanceof Date ? payment.date.toISOString() : payment.date
+  }));
+  
+  const [localPayments, setLocalPayments] = useState<Payment[]>(formattedInitialPayments);
   
   // New payment dialog
   const [isNewPaymentDialogOpen, setIsNewPaymentDialogOpen] = useState(false);

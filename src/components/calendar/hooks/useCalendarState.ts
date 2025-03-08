@@ -7,7 +7,45 @@ import { createRecurringAppointments } from "../utils";
 
 import type { Appointment, AvailableSlot, NewPatient } from "../utils";
 
-export function useCalendarState() {
+export type CalendarState = {
+  currentDate: Date;
+  setCurrentDate: (date: Date) => void;
+  weekStart: Date;
+  weekDays: Date[];
+  availableSlots: AvailableSlot[];
+  setAvailableSlots: (slots: AvailableSlot[]) => void;
+  selectedSlot: { day: Date; time: string } | null;
+  setSelectedSlot: (slot: { day: Date; time: string } | null) => void;
+  appointments: Appointment[];
+  setAppointments: (appointments: Appointment[]) => void;
+  selectedPatientId: string;
+  appointmentNotes: string;
+  isRecurring: boolean;
+  selectedAppointment: Appointment | null;
+  setSelectedAppointment: (appointment: Appointment | null) => void;
+  setIsEditMode: (isEditMode: boolean) => void;
+  setSelectedPatientId: (id: string) => void;
+  setIsRecurring: (isRecurring: boolean) => void;
+  setAppointmentNotes: (notes: string) => void;
+  toast: { toast: (props: { title: string; description: string }) => void };
+  newPatient: {
+    name: string;
+    email: string;
+    phone: string;
+    notes: string;
+  };
+  setNewPatient: (patient: {
+    name: string;
+    email: string;
+    phone: string;
+    notes: string;
+  }) => void;
+  setIsNewPatientDialogOpen: (open: boolean) => void;
+  isNewPatientDialogOpen: boolean;
+  isEditMode: boolean;
+};
+
+export function useCalendarState(): CalendarState {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<{ day: Date, time: string } | null>(null);
@@ -90,7 +128,7 @@ export function useCalendarState() {
     setIsEditMode,
     appointmentNotes,
     setAppointmentNotes,
-    toast,
+    toast: { toast },
     
     // Derived state
     weekStart,

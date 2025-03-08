@@ -2,47 +2,11 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { addDays } from "date-fns";
 import { createRecurringAppointments } from "../utils";
-import type { Appointment, AppointmentStatus } from "../utils";
+import type { Appointment } from "../utils";
+import { patients } from "@/lib/data";
+import { AppointmentStatus } from "@/lib/data";
 
-import type { Toast } from "@/hooks/use-toast";
-
-type CalendarState = {
-  currentDate: Date;
-  setCurrentDate: (date: Date) => void;
-  weekStart: Date;
-  weekDays: Date[];
-  availableSlots: { day: number; time: string }[];
-  setAvailableSlots: (slots: { day: number; time: string }[]) => void;
-  selectedSlot: { day: Date; time: string } | null;
-  setSelectedSlot: (slot: { day: Date; time: string } | null) => void;
-  appointments: Appointment[];
-  setAppointments: (appointments: Appointment[]) => void;
-  selectedPatientId: string;
-  appointmentNotes: string;
-  isRecurring: boolean;
-  selectedAppointment: Appointment | null;
-  setSelectedAppointment: (appointment: Appointment | null) => void;
-  setIsEditMode: (isEditMode: boolean) => void;
-  setSelectedPatientId: (id: string) => void;
-  setIsRecurring: (isRecurring: boolean) => void;
-  setAppointmentNotes: (notes: string) => void;
-  toast: {
-    toast: (props: { title: string; description: string }) => void;
-  };
-  newPatient: {
-    name: string;
-    email: string;
-    phone: string;
-    notes: string;
-  };
-  setNewPatient: (patient: {
-    name: string;
-    email: string;
-    phone: string;
-    notes: string;
-  }) => void;
-  setIsNewPatientDialogOpen: (open: boolean) => void;
-};
+import type { CalendarState } from "./useCalendarState";
 
 export function useCalendarOperations(state: CalendarState) {
   const {
@@ -92,7 +56,7 @@ export function useCalendarOperations(state: CalendarState) {
     // Using Sunday as first day (0-6, Sun-Sat)
     const dayOfWeek = day.getDay();
     
-    setAvailableSlots(prevSlots => [
+    setAvailableSlots((prevSlots) => [
       ...prevSlots,
       { day: dayOfWeek, time: timeSlot }
     ]);
@@ -107,7 +71,7 @@ export function useCalendarOperations(state: CalendarState) {
     // Using Sunday as first day (0-6, Sun-Sat)
     const dayOfWeek = day.getDay();
     
-    setAvailableSlots(prevSlots => 
+    setAvailableSlots((prevSlots) => 
       prevSlots.filter(
         slot => !(slot.day === dayOfWeek && slot.time === timeSlot)
       )
@@ -121,7 +85,7 @@ export function useCalendarOperations(state: CalendarState) {
     setSelectedSlot(null);
   };
 
-  const scheduleNewAppointment = (patients: any[]) => {
+  const scheduleNewAppointment = () => {
     if (!selectedSlot || !selectedPatientId) {
       toast.toast({
         title: "Atenção",
@@ -159,7 +123,7 @@ export function useCalendarOperations(state: CalendarState) {
       newAppointments = [...newAppointments, ...recurringAppointments];
     }
     
-    setAppointments(prev => [...prev, ...newAppointments]);
+    setAppointments((prev) => [...prev, ...newAppointments]);
     
     // Remove the slot from available slots since it's now booked
     removeSlotAvailability(selectedSlot.day, selectedSlot.time);
@@ -193,7 +157,7 @@ export function useCalendarOperations(state: CalendarState) {
       paid: false
     };
     
-    setAppointments(prev => [...prev, newAppointment]);
+    setAppointments((prev) => [...prev, newAppointment]);
     
     // Remove the slot from available slots
     removeSlotAvailability(selectedSlot.day, selectedSlot.time);
