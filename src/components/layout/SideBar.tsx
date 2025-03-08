@@ -79,7 +79,7 @@ export function SideBar() {
           <NavItem
             to="/appointments"
             icon={Calendar}
-            label="Consultas"
+            label="Sessões"
           />
           <NavItem
             to="/payments"

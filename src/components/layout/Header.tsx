@@ -21,7 +21,7 @@ const getPageTitle = (pathname: string): string => {
     case "/patients":
       return "Pacientes";
     case "/appointments":
-      return "Consultas";
+      return "Sessões";
     case "/payments":
       return "Pagamentos";
     case "/settings":
@@ -69,42 +69,17 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-white">
-                3
-              </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80 animate-scale-in">
             <DropdownMenuLabel>Notificações</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <div className="max-h-[300px] overflow-auto">
-              <DropdownMenuItem className="cursor-pointer py-3">
-                <div className="flex flex-col gap-1">
-                  <p className="font-medium">Nova consulta agendada</p>
-                  <p className="text-sm text-muted-foreground">
-                    João Silva agendou uma consulta para amanhã às 14:00
-                  </p>
-                  <p className="text-xs text-muted-foreground">Há 5 minutos</p>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer py-3">
-                <div className="flex flex-col gap-1">
-                  <p className="font-medium">Pagamento recebido</p>
-                  <p className="text-sm text-muted-foreground">
-                    Recebimento confirmado: R$ 150,00 - Maria Oliveira
-                  </p>
-                  <p className="text-xs text-muted-foreground">Há 2 horas</p>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer py-3">
-                <div className="flex flex-col gap-1">
-                  <p className="font-medium">Lembrete</p>
-                  <p className="text-sm text-muted-foreground">
-                    Próxima consulta: Pedro Costa - Hoje às 16:30
-                  </p>
-                  <p className="text-xs text-muted-foreground">Há 3 horas</p>
-                </div>
-              </DropdownMenuItem>
+              <div className="flex h-32 flex-col items-center justify-center p-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Sem notificações no momento.
+                </p>
+              </div>
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="cursor-pointer justify-center font-medium text-primary">

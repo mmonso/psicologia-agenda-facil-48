@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { getAppointmentSummary, getFinancialSummary, patients } from "@/lib/data";
 
 interface StatCardProps {
   title: string;
@@ -53,30 +54,44 @@ function StatCard({ title, value, description, icon: Icon, trend, className }: S
 }
 
 export function StatsCards() {
+  const appointmentSummary = getAppointmentSummary();
+  const financialSummary = getFinancialSummary();
+  
+  // Count new patients this month
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  
+  const newPatientsThisMonth = patients.filter(p => {
+    const startDate = new Date(p.startDate);
+    return startDate.getMonth() === currentMonth && 
+           startDate.getFullYear() === currentYear;
+  }).length;
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <StatCard
-        title="Consultas Hoje"
-        value="2"
-        description="2 agendadas, 0 canceladas"
+        title="Sessões Hoje"
+        value={appointmentSummary.today}
+        description={`${appointmentSummary.today} agendadas, ${appointmentSummary.canceled} canceladas`}
         icon={Calendar}
       />
       <StatCard
         title="Total de Pacientes"
-        value="24"
-        description="3 novos este mês"
+        value={patients.length}
+        description={`${newPatientsThisMonth} novos este mês`}
         icon={Users}
       />
       <StatCard
         title="Receita Mensal"
-        value="R$ 3.450"
-        trend={12.5}
+        value={`R$ ${financialSummary.thisMonth.toFixed(2)}`}
+        trend={financialSummary.growth}
         icon={CreditCard}
       />
       <StatCard
         title="Pagamentos Pendentes"
-        value="R$ 750"
-        description="5 pagamentos"
+        value={`R$ ${financialSummary.pending.toFixed(2)}`}
+        description={`${financialSummary.pending > 0 ? "Aguardando recebimento" : "Sem pagamentos pendentes"}`}
         icon={TrendingUp}
       />
     </div>
