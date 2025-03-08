@@ -154,10 +154,11 @@ export default function Patients() {
       name: newPatient.name,
       email: newPatient.email,
       phone: newPatient.phone,
-      startDate: new Date().toISOString(),
+      startDate: new Date(), // Fix: Use Date object instead of string
       status: "active",
       totalSessions: 0,
-      notes: newPatient.notes
+      notes: newPatient.notes,
+      nextAppointment: null
     };
 
     // Adicionar à lista
