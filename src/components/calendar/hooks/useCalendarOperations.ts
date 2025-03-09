@@ -1,12 +1,10 @@
 
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { addDays } from "date-fns";
-import { createRecurringAppointments } from "../utils";
-import type { Appointment, AvailableSlot, Patient, NewPatient } from "../utils";
-import { AppointmentStatus } from "@/lib/data";
-
+import type { Appointment } from "../utils";
 import type { CalendarState } from "./useCalendarState";
+import { useNavigationOperations } from "./operations/useNavigationOperations";
+import { useAvailabilityOperations } from "./operations/useAvailabilityOperations";
+import { useAppointmentOperations } from "./operations/useAppointmentOperations";
+import { usePatientOperations } from "./operations/usePatientOperations";
 
 export function useCalendarOperations(state: CalendarState) {
   const {
@@ -30,330 +28,48 @@ export function useCalendarOperations(state: CalendarState) {
     setSelectedPatientId,
     setIsRecurring,
     setAppointmentNotes,
-    toast,
     newPatient,
     setNewPatient,
     setIsNewPatientDialogOpen,
   } = state;
 
-  const goToPreviousWeek = () => {
-    setCurrentDate(addDays(weekStart, -7));
-  };
+  const navigation = useNavigationOperations({
+    weekStart,
+    setCurrentDate,
+  });
 
-  const goToNextWeek = () => {
-    setCurrentDate(addDays(weekStart, 7));
-  };
+  const availability = useAvailabilityOperations({
+    availableSlots,
+    setAvailableSlots,
+    setSelectedSlot,
+  });
 
-  const goToCurrentWeek = () => {
-    setCurrentDate(new Date());
-  };
+  const appointment = useAppointmentOperations({
+    appointments,
+    setAppointments,
+    patients,
+    setPatients,
+    selectedPatientId,
+    appointmentNotes,
+    isRecurring,
+    selectedSlot,
+    resetDialogState,
+  });
 
-  const isSlotAvailable = (day: Date, timeSlot: string) => {
-    // Using Sunday as first day (0-6, Sun-Sat)
-    const dayOfWeek = day.getDay();
-    return availableSlots.some(slot => slot.day === dayOfWeek && slot.time === timeSlot);
-  };
+  const patient = usePatientOperations(
+    patients,
+    setPatients,
+    setNewPatient,
+    setIsNewPatientDialogOpen,
+    setSelectedPatientId,
+  );
 
-  const addSlotAvailability = (day: Date, timeSlot: string) => {
-    // Using Sunday as first day (0-6, Sun-Sat)
-    const dayOfWeek = day.getDay();
-    
-    const newSlots = [
-      ...availableSlots,
-      { day: dayOfWeek, time: timeSlot }
-    ];
-    
-    setAvailableSlots(newSlots);
-    
-    toast.toast({
-      title: "Horário disponibilizado",
-      description: `${format(day, "EEEE", { locale: ptBR })} às ${timeSlot} agora está disponível para consultas.`,
-    });
-  };
-  
-  const removeSlotAvailability = (day: Date, timeSlot: string) => {
-    // Using Sunday as first day (0-6, Sun-Sat)
-    const dayOfWeek = day.getDay();
-    
-    const filteredSlots = availableSlots.filter(
-      slot => !(slot.day === dayOfWeek && slot.time === timeSlot)
-    );
-    
-    setAvailableSlots(filteredSlots);
-    
-    toast.toast({
-      title: "Horário removido",
-      description: `${format(day, "EEEE", { locale: ptBR })} às ${timeSlot} não está mais disponível.`,
-    });
-
-    setSelectedSlot(null);
-  };
-
-  const saveNewPatient = () => {
-    if (!newPatient.name.trim()) {
-      toast.toast({
-        title: "Erro",
-        description: "Nome do paciente é obrigatório",
-      });
-      return;
-    }
-
-    // Criar novo paciente
-    const newPatientData: Patient = {
-      id: `patient-${Date.now()}`,
-      name: newPatient.name,
-      email: newPatient.email,
-      phone: newPatient.phone,
-      status: "active",
-      startDate: new Date(),
-      totalSessions: 0,
-      nextAppointment: null,
-      notes: newPatient.notes,
-    };
-
-    // Adicionar à lista de pacientes centralizados
-    const updatedPatients = [...patients, newPatientData];
-    setPatients(updatedPatients);
-    
-    // Resetar o formulário
-    setNewPatient({
-      name: "",
-      email: "",
-      phone: "",
-      notes: ""
-    });
-    
-    // Fechar diálogo
-    setIsNewPatientDialogOpen(false);
-    
-    // Notificar usuário
-    toast.toast({
-      title: "Paciente adicionado",
-      description: `${newPatientData.name} foi adicionado com sucesso.`,
-    });
-    
-    // Selecionar automaticamente o novo paciente
-    setSelectedPatientId(newPatientData.id);
-  };
-
-  const scheduleNewAppointment = () => {
-    if (!selectedSlot || !selectedPatientId) {
-      toast.toast({
-        title: "Atenção",
-        description: "Selecione um paciente para agendar a consulta.",
-      });
-      return;
-    }
-    
-    const patient = patients.find(p => p.id === selectedPatientId);
-    if (!patient) return;
-    
-    const appointmentDate = new Date(selectedSlot.day);
-    appointmentDate.setHours(
-      Number(selectedSlot.time.split(':')[0]),
-      Number(selectedSlot.time.split(':')[1])
-    );
-    
-    const newAppointment = {
-      id: `a${Date.now()}`,
-      patientId: patient.id,
-      patientName: patient.name,
-      date: appointmentDate,
-      duration: 50,
-      status: "scheduled" as AppointmentStatus,
-      notes: appointmentNotes,
-      paid: false,
-      isRecurring: isRecurring
-    };
-    
-    let newAppointments = [newAppointment];
-    
-    // If recurring, create additional appointments
-    if (isRecurring) {
-      const recurringAppointments = createRecurringAppointments(newAppointment);
-      newAppointments = [...newAppointments, ...recurringAppointments];
-    }
-    
-    const updatedAppointments = [...appointments, ...newAppointments];
-    setAppointments(updatedAppointments);
-    
-    // Atualizar nextAppointment do paciente
-    const updatedPatients = patients.map(p => {
-      if (p.id === patient.id) {
-        return {
-          ...p,
-          nextAppointment: appointmentDate,
-          totalSessions: p.totalSessions + 1
-        };
-      }
-      return p;
-    });
-    setPatients(updatedPatients);
-    
-    // Remove the slot from available slots since it's now booked
-    removeSlotAvailability(selectedSlot.day, selectedSlot.time);
-    
-    toast.toast({
-      title: "Consulta agendada",
-      description: `${patient.name} - ${format(selectedSlot.day, "EEEE", { locale: ptBR })} às ${selectedSlot.time}${isRecurring ? " (recorrente)" : ""}`,
-    });
-    
-    resetDialogState();
-  };
-  
-  const reserveTimeSlot = () => {
-    if (!selectedSlot) return;
-    
-    const appointmentDate = new Date(selectedSlot.day);
-    appointmentDate.setHours(
-      Number(selectedSlot.time.split(':')[0]),
-      Number(selectedSlot.time.split(':')[1])
-    );
-    
-    // Create a reserved appointment without a patient
-    const newAppointment = {
-      id: `reserved-${Date.now()}`,
-      patientId: "reserved",
-      patientName: "Horário Reservado",
-      date: appointmentDate,
-      duration: 50,
-      status: "scheduled" as AppointmentStatus,
-      notes: "Horário reservado",
-      paid: false
-    };
-    
-    const updatedAppointments = [...appointments, newAppointment];
-    setAppointments(updatedAppointments);
-    
-    // Remove the slot from available slots
-    removeSlotAvailability(selectedSlot.day, selectedSlot.time);
-    
-    toast.toast({
-      title: "Horário reservado",
-      description: `${format(selectedSlot.day, "EEEE", { locale: ptBR })} às ${selectedSlot.time} foi reservado.`,
-    });
-    
-    resetDialogState();
-  };
-  
   const handleAppointmentClick = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
     setIsEditMode(true);
     setSelectedPatientId(appointment.patientId);
     setIsRecurring(appointment.isRecurring || false);
     setAppointmentNotes(appointment.notes);
-  };
-  
-  const updateAppointment = () => {
-    if (!selectedAppointment) return;
-    
-    const patient = patients.find(p => p.id === selectedPatientId);
-    
-    const updatedAppointments = appointments.map(appointment => {
-      if (appointment.id === selectedAppointment.id) {
-        return {
-          ...appointment,
-          patientId: selectedPatientId || appointment.patientId,
-          patientName: patient?.name || appointment.patientName,
-          notes: appointmentNotes,
-          isRecurring: isRecurring
-        };
-      }
-      return appointment;
-    });
-    
-    setAppointments(updatedAppointments);
-    
-    toast.toast({
-      title: "Consulta atualizada",
-      description: "Os detalhes da consulta foram atualizados com sucesso.",
-    });
-    
-    resetDialogState();
-  };
-  
-  const cancelAppointment = () => {
-    if (!selectedAppointment) return;
-    
-    const updatedAppointments = appointments.map(appointment => {
-      if (appointment.id === selectedAppointment.id) {
-        return {
-          ...appointment,
-          status: "canceled" as AppointmentStatus
-        };
-      }
-      return appointment;
-    });
-    
-    setAppointments(updatedAppointments);
-    
-    toast.toast({
-      title: "Consulta cancelada",
-      description: "A consulta foi cancelada com sucesso.",
-    });
-    
-    resetDialogState();
-  };
-  
-  const completeAppointment = () => {
-    if (!selectedAppointment) return;
-    
-    const updatedAppointments = appointments.map(appointment => {
-      if (appointment.id === selectedAppointment.id) {
-        return {
-          ...appointment,
-          status: "completed" as AppointmentStatus,
-          paid: true
-        };
-      }
-      return appointment;
-    });
-    
-    setAppointments(updatedAppointments);
-    
-    // Atualizar o número total de sessões do paciente
-    if (selectedAppointment.patientId !== "reserved") {
-      const updatedPatients = patients.map(p => {
-        if (p.id === selectedAppointment.patientId) {
-          return {
-            ...p,
-            totalSessions: p.totalSessions + 1
-          };
-        }
-        return p;
-      });
-      setPatients(updatedPatients);
-    }
-    
-    toast.toast({
-      title: "Consulta realizada",
-      description: "A consulta foi marcada como realizada e paga.",
-    });
-    
-    resetDialogState();
-  };
-  
-  const markNoShow = () => {
-    if (!selectedAppointment) return;
-    
-    const updatedAppointments = appointments.map(appointment => {
-      if (appointment.id === selectedAppointment.id) {
-        return {
-          ...appointment,
-          status: "no-show" as AppointmentStatus
-        };
-      }
-      return appointment;
-    });
-    
-    setAppointments(updatedAppointments);
-    
-    toast.toast({
-      title: "Não compareceu",
-      description: "O paciente foi marcado como não compareceu.",
-    });
-    
-    resetDialogState();
   };
   
   const resetDialogState = () => {
@@ -366,20 +82,11 @@ export function useCalendarOperations(state: CalendarState) {
   };
 
   return {
-    goToPreviousWeek,
-    goToNextWeek,
-    goToCurrentWeek,
-    isSlotAvailable,
-    addSlotAvailability,
-    removeSlotAvailability,
-    scheduleNewAppointment,
-    reserveTimeSlot,
-    saveNewPatient,
+    ...navigation,
+    ...availability,
+    ...appointment,
+    saveNewPatient: patient.saveNewPatient,
     handleAppointmentClick,
-    updateAppointment,
-    cancelAppointment,
-    completeAppointment,
-    markNoShow,
     resetDialogState,
   };
 }
