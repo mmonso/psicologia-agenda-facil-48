@@ -1,9 +1,9 @@
+
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { addDays } from "date-fns";
 import { createRecurringAppointments } from "../utils";
-import type { Appointment } from "../utils";
-import { patients } from "@/lib/data";
+import type { Appointment, AvailableSlot, Patient } from "../utils";
 import { AppointmentStatus } from "@/lib/data";
 
 import type { CalendarState } from "./useCalendarState";
@@ -19,6 +19,8 @@ export function useCalendarOperations(state: CalendarState) {
     setSelectedSlot,
     appointments,
     setAppointments,
+    patients,
+    setPatients,
     selectedPatientId,
     appointmentNotes,
     isRecurring,
@@ -56,7 +58,7 @@ export function useCalendarOperations(state: CalendarState) {
     // Using Sunday as first day (0-6, Sun-Sat)
     const dayOfWeek = day.getDay();
     
-    setAvailableSlots((prevSlots) => [
+    setAvailableSlots((prevSlots: AvailableSlot[]) => [
       ...prevSlots,
       { day: dayOfWeek, time: timeSlot }
     ]);
@@ -71,7 +73,7 @@ export function useCalendarOperations(state: CalendarState) {
     // Using Sunday as first day (0-6, Sun-Sat)
     const dayOfWeek = day.getDay();
     
-    setAvailableSlots((prevSlots) => 
+    setAvailableSlots((prevSlots: AvailableSlot[]) => 
       prevSlots.filter(
         slot => !(slot.day === dayOfWeek && slot.time === timeSlot)
       )
@@ -83,6 +85,52 @@ export function useCalendarOperations(state: CalendarState) {
     });
 
     setSelectedSlot(null);
+  };
+
+  const saveNewPatient = () => {
+    if (!newPatient.name.trim()) {
+      toast.toast({
+        title: "Erro",
+        description: "Nome do paciente é obrigatório",
+      });
+      return;
+    }
+
+    // Criar novo paciente
+    const newPatientData: Patient = {
+      id: `patient-${Date.now()}`,
+      name: newPatient.name,
+      email: newPatient.email,
+      phone: newPatient.phone,
+      status: "active",
+      startDate: new Date(),
+      totalSessions: 0,
+      nextAppointment: null,
+      notes: newPatient.notes,
+    };
+
+    // Adicionar à lista de pacientes centralizados
+    setPatients((prevPatients: Patient[]) => [...prevPatients, newPatientData]);
+    
+    // Resetar o formulário
+    setNewPatient({
+      name: "",
+      email: "",
+      phone: "",
+      notes: ""
+    });
+    
+    // Fechar diálogo
+    setIsNewPatientDialogOpen(false);
+    
+    // Notificar usuário
+    toast.toast({
+      title: "Paciente adicionado",
+      description: `${newPatientData.name} foi adicionado com sucesso.`,
+    });
+    
+    // Selecionar automaticamente o novo paciente
+    setSelectedPatientId(newPatientData.id);
   };
 
   const scheduleNewAppointment = () => {
@@ -123,7 +171,20 @@ export function useCalendarOperations(state: CalendarState) {
       newAppointments = [...newAppointments, ...recurringAppointments];
     }
     
-    setAppointments((prev) => [...prev, ...newAppointments]);
+    setAppointments((prev: Appointment[]) => [...prev, ...newAppointments]);
+    
+    // Atualizar nextAppointment do paciente
+    const updatedPatients = patients.map(p => {
+      if (p.id === patient.id) {
+        return {
+          ...p,
+          nextAppointment: appointmentDate,
+          totalSessions: p.totalSessions + 1
+        };
+      }
+      return p;
+    });
+    setPatients(updatedPatients);
     
     // Remove the slot from available slots since it's now booked
     removeSlotAvailability(selectedSlot.day, selectedSlot.time);
@@ -157,7 +218,7 @@ export function useCalendarOperations(state: CalendarState) {
       paid: false
     };
     
-    setAppointments((prev) => [...prev, newAppointment]);
+    setAppointments((prev: Appointment[]) => [...prev, newAppointment]);
     
     // Remove the slot from available slots
     removeSlotAvailability(selectedSlot.day, selectedSlot.time);
@@ -168,26 +229,6 @@ export function useCalendarOperations(state: CalendarState) {
     });
     
     resetDialogState();
-  };
-  
-  const saveNewPatient = () => {
-    // In a real app, we would save this to the database
-    // For now we'll just show a toast and close the dialog
-    toast.toast({
-      title: "Paciente adicionado",
-      description: `${newPatient.name} foi adicionado com sucesso.`,
-    });
-    
-    // Reset the form
-    setNewPatient({
-      name: "",
-      email: "",
-      phone: "",
-      notes: ""
-    });
-    
-    // Close new patient dialog and keep appointment dialog open
-    setIsNewPatientDialogOpen(false);
   };
   
   const handleAppointmentClick = (appointment: Appointment) => {
@@ -201,12 +242,14 @@ export function useCalendarOperations(state: CalendarState) {
   const updateAppointment = () => {
     if (!selectedAppointment) return;
     
+    const patient = patients.find(p => p.id === selectedPatientId);
+    
     const updatedAppointments = appointments.map(appointment => {
       if (appointment.id === selectedAppointment.id) {
         return {
           ...appointment,
           patientId: selectedPatientId || appointment.patientId,
-          patientName: patients.find(p => p.id === selectedPatientId)?.name || appointment.patientName,
+          patientName: patient?.name || appointment.patientName,
           notes: appointmentNotes,
           isRecurring: isRecurring
         };
@@ -262,6 +305,20 @@ export function useCalendarOperations(state: CalendarState) {
     });
     
     setAppointments(updatedAppointments);
+    
+    // Atualizar o número total de sessões do paciente
+    if (selectedAppointment.patientId !== "reserved") {
+      const updatedPatients = patients.map(p => {
+        if (p.id === selectedAppointment.patientId) {
+          return {
+            ...p,
+            totalSessions: p.totalSessions + 1
+          };
+        }
+        return p;
+      });
+      setPatients(updatedPatients);
+    }
     
     toast.toast({
       title: "Consulta realizada",

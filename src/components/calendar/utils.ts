@@ -1,5 +1,5 @@
 
-import { AppointmentStatus } from "@/lib/data";
+import { AppointmentStatus, PatientStatus } from "@/lib/data";
 
 export interface Appointment {
   id: string;
@@ -22,6 +22,18 @@ export interface NewPatient {
   name: string;
   email: string;
   phone: string;
+  notes: string;
+}
+
+export interface Patient {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: PatientStatus;
+  startDate: Date;
+  totalSessions: number;
+  nextAppointment: Date | null;
   notes: string;
 }
 

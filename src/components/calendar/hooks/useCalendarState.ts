@@ -2,10 +2,10 @@
 import { useState, useMemo, useEffect } from "react";
 import { addDays, startOfWeek } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { patients } from "@/lib/data";
+import { patients as initialPatients, Patient as LibPatient } from "@/lib/data";
 import { createRecurringAppointments } from "../utils";
 
-import type { Appointment, AvailableSlot, NewPatient } from "../utils";
+import type { Appointment, AvailableSlot, NewPatient, Patient } from "../utils";
 
 export type CalendarState = {
   currentDate: Date;
@@ -18,6 +18,8 @@ export type CalendarState = {
   setSelectedSlot: (slot: { day: Date; time: string } | null) => void;
   appointments: Appointment[];
   setAppointments: (appointments: Appointment[]) => void;
+  patients: Patient[];
+  setPatients: (patients: Patient[]) => void;
   selectedPatientId: string;
   appointmentNotes: string;
   isRecurring: boolean;
@@ -28,18 +30,8 @@ export type CalendarState = {
   setIsRecurring: (isRecurring: boolean) => void;
   setAppointmentNotes: (notes: string) => void;
   toast: { toast: (props: { title: string; description: string }) => void };
-  newPatient: {
-    name: string;
-    email: string;
-    phone: string;
-    notes: string;
-  };
-  setNewPatient: (patient: {
-    name: string;
-    email: string;
-    phone: string;
-    notes: string;
-  }) => void;
+  newPatient: NewPatient;
+  setNewPatient: (patient: NewPatient) => void;
   setIsNewPatientDialogOpen: (open: boolean) => void;
   isNewPatientDialogOpen: boolean;
   isEditMode: boolean;
@@ -58,6 +50,7 @@ export function useCalendarState(): CalendarState {
   });
   const [selectedPatientId, setSelectedPatientId] = useState<string>("");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [isRecurring, setIsRecurring] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -74,6 +67,7 @@ export function useCalendarState(): CalendarState {
   }, [weekStart]);
 
   useEffect(() => {
+    // Carregar slots disponíveis
     const savedSlots = localStorage.getItem('availableSlots');
     if (savedSlots) {
       try {
@@ -83,7 +77,7 @@ export function useCalendarState(): CalendarState {
       }
     }
     
-    // Load saved appointments
+    // Carregar consultas
     const savedAppointments = localStorage.getItem('appointments');
     if (savedAppointments) {
       try {
@@ -92,17 +86,45 @@ export function useCalendarState(): CalendarState {
         console.error('Erro ao carregar consultas:', e);
       }
     } else {
-      setAppointments([]); // Start with empty appointments
+      setAppointments([]); // Inicia com consultas vazias
+    }
+
+    // Carregar pacientes
+    const savedPatients = localStorage.getItem('patients');
+    if (savedPatients) {
+      try {
+        setPatients(JSON.parse(savedPatients));
+      } catch (e) {
+        console.error('Erro ao carregar pacientes:', e);
+        // Usa os pacientes iniciais como fallback
+        setPatients(initialPatients.map(p => ({
+          ...p,
+          startDate: p.startDate instanceof Date ? p.startDate : new Date(p.startDate)
+        })));
+      }
+    } else {
+      // Converter os pacientes iniciais para o formato correto
+      setPatients(initialPatients.map(p => ({
+        ...p,
+        startDate: p.startDate instanceof Date ? p.startDate : new Date(p.startDate)
+      })));
     }
   }, []);
 
+  // Salvar slots disponíveis quando mudarem
   useEffect(() => {
     localStorage.setItem('availableSlots', JSON.stringify(availableSlots));
   }, [availableSlots]);
   
+  // Salvar consultas quando mudarem
   useEffect(() => {
     localStorage.setItem('appointments', JSON.stringify(appointments));
   }, [appointments]);
+
+  // Salvar pacientes quando mudarem
+  useEffect(() => {
+    localStorage.setItem('patients', JSON.stringify(patients));
+  }, [patients]);
 
   return {
     // State
@@ -120,6 +142,8 @@ export function useCalendarState(): CalendarState {
     setSelectedPatientId,
     appointments,
     setAppointments,
+    patients,
+    setPatients,
     isRecurring,
     setIsRecurring,
     selectedAppointment,

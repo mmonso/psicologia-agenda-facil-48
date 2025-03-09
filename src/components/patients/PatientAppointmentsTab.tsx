@@ -1,17 +1,44 @@
 
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/data";
-import { Patient, Appointment } from "@/lib/data";
+import { Appointment } from "@/components/calendar/utils";
 
 interface PatientAppointmentsTabProps {
-  patientAppointments: Appointment[];
+  patientId: string;
 }
 
-export function PatientAppointmentsTab({ patientAppointments }: PatientAppointmentsTabProps) {
+export function PatientAppointmentsTab({ patientId }: PatientAppointmentsTabProps) {
+  const [patientAppointments, setPatientAppointments] = useState<Appointment[]>([]);
+
+  useEffect(() => {
+    // Carregar consultas do localStorage
+    const savedAppointments = localStorage.getItem('appointments');
+    if (savedAppointments) {
+      try {
+        const allAppointments = JSON.parse(savedAppointments);
+        // Filtrar apenas consultas deste paciente
+        const patientAppointments = allAppointments.filter((app: Appointment) => 
+          app.patientId === patientId
+        );
+        
+        // Converter datas strings para objetos Date
+        const formattedAppointments = patientAppointments.map((app: any) => ({
+          ...app,
+          date: new Date(app.date)
+        }));
+        
+        setPatientAppointments(formattedAppointments);
+      } catch (e) {
+        console.error('Erro ao carregar consultas do paciente:', e);
+      }
+    }
+  }, [patientId]);
+
   return (
     <div className="pt-4">
       {patientAppointments.length === 0 ? (

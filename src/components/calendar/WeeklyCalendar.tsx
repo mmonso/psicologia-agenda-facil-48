@@ -26,6 +26,7 @@ export default function WeeklyCalendar() {
     completeAppointment,
     markNoShow,
     resetDialogState,
+    saveNewPatient,
   } = useCalendarOperations(state);
 
   const {
@@ -49,30 +50,14 @@ export default function WeeklyCalendar() {
 
   const handleNewPatientChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setNewPatient(prev => ({
-      ...prev,
+    setNewPatient(prevPatient => ({
+      ...prevPatient,
       [name]: value
     }));
   };
 
   const openNewPatientDialog = () => {
     setIsNewPatientDialogOpen(true);
-  };
-
-  const saveNewPatient = () => {
-    state.toast.toast({
-      title: "Paciente adicionado",
-      description: `${newPatient.name} foi adicionado com sucesso.`,
-    });
-    
-    setNewPatient({
-      name: "",
-      email: "",
-      phone: "",
-      notes: ""
-    });
-    
-    setIsNewPatientDialogOpen(false);
   };
 
   return (

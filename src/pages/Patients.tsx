@@ -1,10 +1,10 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { patients, Patient, appointments } from "@/lib/data";
+import { Patient } from "@/components/calendar/utils";
 import { toast } from "sonner";
 import NewPatientDialog from "@/components/calendar/NewPatientDialog";
 import { PatientTable } from "@/components/patients/PatientTable";
@@ -16,7 +16,7 @@ export default function Patients() {
   const [medicalNotes, setMedicalNotes] = useState<string>("");
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedPatient, setEditedPatient] = useState<Patient | null>(null);
-  const [localPatients, setLocalPatients] = useState<Patient[]>(patients);
+  const [localPatients, setLocalPatients] = useState<Patient[]>([]);
   
   // Estado para o novo paciente e o diálogo
   const [isNewPatientDialogOpen, setIsNewPatientDialogOpen] = useState(false);
@@ -26,6 +26,32 @@ export default function Patients() {
     phone: "",
     notes: ""
   });
+
+  // Carregar pacientes do localStorage
+  useEffect(() => {
+    const savedPatients = localStorage.getItem('patients');
+    if (savedPatients) {
+      try {
+        const parsedPatients = JSON.parse(savedPatients);
+        // Converter data strings para objetos Date
+        const formattedPatients = parsedPatients.map((p: any) => ({
+          ...p,
+          startDate: new Date(p.startDate),
+          nextAppointment: p.nextAppointment ? new Date(p.nextAppointment) : null
+        }));
+        setLocalPatients(formattedPatients);
+      } catch (e) {
+        console.error('Erro ao carregar pacientes:', e);
+      }
+    }
+  }, []);
+
+  // Salvar pacientes no localStorage quando mudarem
+  useEffect(() => {
+    if (localPatients.length > 0) {
+      localStorage.setItem('patients', JSON.stringify(localPatients));
+    }
+  }, [localPatients]);
 
   // Filter patients based on search term
   const filteredPatients = localPatients.filter((patient) => {
@@ -89,7 +115,7 @@ export default function Patients() {
   // Save edited patient
   const handleSavePatient = () => {
     if (editedPatient) {
-      // In a real app, you would save to backend here
+      // Update patient in local state
       setLocalPatients(localPatients.map(p => 
         p.id === editedPatient.id ? editedPatient : p
       ));
@@ -154,7 +180,7 @@ export default function Patients() {
       name: newPatient.name,
       email: newPatient.email,
       phone: newPatient.phone,
-      startDate: new Date(), // Fix: Use Date object instead of string
+      startDate: new Date(),
       status: "active",
       totalSessions: 0,
       notes: newPatient.notes,
