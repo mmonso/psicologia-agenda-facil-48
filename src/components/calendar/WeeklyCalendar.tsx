@@ -17,6 +17,7 @@ export default function WeeklyCalendar() {
     weekStart,
     weekDays,
     selectedSlot,
+    setSelectedSlot,
     isNewPatientDialogOpen,
     setIsNewPatientDialogOpen,
     newPatient,
@@ -51,10 +52,10 @@ export default function WeeklyCalendar() {
 
   const handleNewPatientChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setNewPatient((prevPatient) => ({
-      ...prevPatient,
+    setNewPatient({
+      ...newPatient,
       [name]: value
-    }));
+    });
   };
 
   const openNewPatientDialog = () => {
@@ -103,7 +104,7 @@ export default function WeeklyCalendar() {
         onCancelAppointment={cancelAppointment}
         onMarkNoShow={markNoShow}
         onOpenNewPatientDialog={openNewPatientDialog}
-        onOpenRemoveAvailabilityConfirmation={() => setSelectedSlot(selectedSlot)}
+        onOpenRemoveAvailabilityConfirmation={() => selectedSlot && setSelectedSlot(selectedSlot)}
         selectedPatientId={selectedPatientId}
         setSelectedPatientId={setSelectedPatientId}
         isRecurring={isRecurring}

@@ -73,21 +73,23 @@ export function CalendarDialogs({
       />
 
       {/* Diálogo de edição de consulta */}
-      <EditAppointmentDialog 
-        open={isEditMode && !!selectedAppointment}
-        selectedAppointment={selectedAppointment}
-        onClose={onClose}
-        onUpdateAppointment={onUpdateAppointment}
-        onCompleteAppointment={onCompleteAppointment}
-        onCancelAppointment={onCancelAppointment}
-        onMarkNoShow={onMarkNoShow}
-        selectedPatientId={selectedPatientId}
-        setSelectedPatientId={setSelectedPatientId}
-        isRecurring={isRecurring}
-        setIsRecurring={setIsRecurring}
-        appointmentNotes={appointmentNotes}
-        setAppointmentNotes={setAppointmentNotes}
-      />
+      {selectedAppointment && (
+        <EditAppointmentDialog 
+          open={isEditMode && !!selectedAppointment}
+          selectedAppointment={selectedAppointment}
+          onClose={onClose}
+          onUpdateAppointment={() => selectedAppointment && onUpdateAppointment(selectedAppointment)}
+          onCompleteAppointment={() => selectedAppointment && onCompleteAppointment(selectedAppointment)}
+          onCancelAppointment={() => selectedAppointment && onCancelAppointment(selectedAppointment)}
+          onMarkNoShow={() => selectedAppointment && onMarkNoShow(selectedAppointment)}
+          selectedPatientId={selectedPatientId}
+          setSelectedPatientId={setSelectedPatientId}
+          isRecurring={isRecurring}
+          setIsRecurring={setIsRecurring}
+          appointmentNotes={appointmentNotes}
+          setAppointmentNotes={setAppointmentNotes}
+        />
+      )}
 
       {/* Diálogo de novo paciente */}
       <NewPatientDialog 

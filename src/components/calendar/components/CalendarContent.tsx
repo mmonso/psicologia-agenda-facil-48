@@ -1,7 +1,8 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import TimeSlots from "../TimeSlots";
-import { Appointment, AppointmentStatus } from "../utils";
+import { Appointment } from "../utils";
+import { AppointmentStatus } from "@/lib/data";
 
 interface CalendarContentProps {
   timeSlots: string[];
