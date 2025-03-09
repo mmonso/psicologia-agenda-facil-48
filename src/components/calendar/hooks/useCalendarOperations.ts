@@ -44,6 +44,15 @@ export function useCalendarOperations(state: CalendarState) {
     setSelectedSlot,
   });
 
+  const resetDialogState = () => {
+    setSelectedAppointment(null);
+    setIsEditMode(false);
+    setSelectedPatientId("");
+    setIsRecurring(false);
+    setAppointmentNotes("");
+    setSelectedSlot(null);
+  };
+
   const appointment = useAppointmentOperations({
     appointments,
     setAppointments,
@@ -70,15 +79,6 @@ export function useCalendarOperations(state: CalendarState) {
     setSelectedPatientId(appointment.patientId);
     setIsRecurring(appointment.isRecurring || false);
     setAppointmentNotes(appointment.notes);
-  };
-  
-  const resetDialogState = () => {
-    setSelectedAppointment(null);
-    setIsEditMode(false);
-    setSelectedPatientId("");
-    setIsRecurring(false);
-    setAppointmentNotes("");
-    setSelectedSlot(null);
   };
 
   return {

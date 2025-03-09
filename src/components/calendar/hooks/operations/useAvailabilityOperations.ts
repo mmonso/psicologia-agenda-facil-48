@@ -31,7 +31,6 @@ export function useAvailabilityOperations({
     setAvailableSlots(newSlots);
     
     toast({
-      title: "Horário disponibilizado",
       description: `${format(day, "EEEE", { locale: ptBR })} às ${timeSlot} agora está disponível para consultas.`,
     });
   };
@@ -46,7 +45,6 @@ export function useAvailabilityOperations({
     setAvailableSlots(filteredSlots);
     
     toast({
-      title: "Horário removido",
       description: `${format(day, "EEEE", { locale: ptBR })} às ${timeSlot} não está mais disponível.`,
     });
 

@@ -20,7 +20,6 @@ export function usePatientOperations(
 
     if (!newPatient.name.trim()) {
       toast({
-        title: "Erro",
         description: "Nome do paciente é obrigatório",
       });
       return;
@@ -52,7 +51,6 @@ export function usePatientOperations(
     setIsNewPatientDialogOpen(false);
     
     toast({
-      title: "Paciente adicionado",
       description: `${newPatientData.name} foi adicionado com sucesso.`,
     });
     
