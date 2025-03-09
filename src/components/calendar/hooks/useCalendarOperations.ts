@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { addDays } from "date-fns";
 import { createRecurringAppointments } from "../utils";
-import type { Appointment, AvailableSlot, Patient } from "../utils";
+import type { Appointment, AvailableSlot, Patient, NewPatient } from "../utils";
 import { AppointmentStatus } from "@/lib/data";
 
 import type { CalendarState } from "./useCalendarState";
@@ -58,10 +58,12 @@ export function useCalendarOperations(state: CalendarState) {
     // Using Sunday as first day (0-6, Sun-Sat)
     const dayOfWeek = day.getDay();
     
-    setAvailableSlots((prevSlots: AvailableSlot[]) => [
-      ...prevSlots,
+    const newSlots = [
+      ...availableSlots,
       { day: dayOfWeek, time: timeSlot }
-    ]);
+    ];
+    
+    setAvailableSlots(newSlots);
     
     toast.toast({
       title: "Horário disponibilizado",
@@ -73,11 +75,11 @@ export function useCalendarOperations(state: CalendarState) {
     // Using Sunday as first day (0-6, Sun-Sat)
     const dayOfWeek = day.getDay();
     
-    setAvailableSlots((prevSlots: AvailableSlot[]) => 
-      prevSlots.filter(
-        slot => !(slot.day === dayOfWeek && slot.time === timeSlot)
-      )
+    const filteredSlots = availableSlots.filter(
+      slot => !(slot.day === dayOfWeek && slot.time === timeSlot)
     );
+    
+    setAvailableSlots(filteredSlots);
     
     toast.toast({
       title: "Horário removido",
@@ -110,7 +112,8 @@ export function useCalendarOperations(state: CalendarState) {
     };
 
     // Adicionar à lista de pacientes centralizados
-    setPatients((prevPatients: Patient[]) => [...prevPatients, newPatientData]);
+    const updatedPatients = [...patients, newPatientData];
+    setPatients(updatedPatients);
     
     // Resetar o formulário
     setNewPatient({
@@ -171,7 +174,8 @@ export function useCalendarOperations(state: CalendarState) {
       newAppointments = [...newAppointments, ...recurringAppointments];
     }
     
-    setAppointments((prev: Appointment[]) => [...prev, ...newAppointments]);
+    const updatedAppointments = [...appointments, ...newAppointments];
+    setAppointments(updatedAppointments);
     
     // Atualizar nextAppointment do paciente
     const updatedPatients = patients.map(p => {
@@ -218,7 +222,8 @@ export function useCalendarOperations(state: CalendarState) {
       paid: false
     };
     
-    setAppointments((prev: Appointment[]) => [...prev, newAppointment]);
+    const updatedAppointments = [...appointments, newAppointment];
+    setAppointments(updatedAppointments);
     
     // Remove the slot from available slots
     removeSlotAvailability(selectedSlot.day, selectedSlot.time);

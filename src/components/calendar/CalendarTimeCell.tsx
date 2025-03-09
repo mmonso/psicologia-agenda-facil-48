@@ -8,6 +8,7 @@ import { AppointmentStatus } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { Repeat } from "lucide-react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import ConfirmationDialog from "./dialogs/ConfirmationDialog";
 
 interface Appointment {
   id: string;
@@ -36,6 +37,7 @@ interface CalendarTimeCellProps {
   onSelectSlot: () => void;
   onSelectAppointment: (appointment: Appointment) => void;
   getStatusDetails: (status: AppointmentStatus) => StatusDetails;
+  onOpenAddAvailabilityConfirmation: (day: Date, timeSlot: string) => void;
 }
 
 export default function CalendarTimeCell({
@@ -46,7 +48,8 @@ export default function CalendarTimeCell({
   onAddAvailability,
   onSelectSlot,
   onSelectAppointment,
-  getStatusDetails
+  getStatusDetails,
+  onOpenAddAvailabilityConfirmation
 }: CalendarTimeCellProps) {
   const hasAppointment = dayAppointments.length > 0;
   
@@ -108,7 +111,7 @@ export default function CalendarTimeCell({
       ) : (
         <div 
           className="h-full w-full flex items-center justify-center cursor-pointer hover:bg-accent/10 transition-colors"
-          onClick={onAddAvailability}
+          onClick={() => onOpenAddAvailabilityConfirmation(day, timeSlot)}
         >
           <Button 
             variant="ghost" 

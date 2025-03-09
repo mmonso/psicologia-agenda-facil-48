@@ -17,6 +17,7 @@ interface TimeSlotProps {
     variant: "default" | "outline" | "destructive";
     className?: string;
   };
+  onOpenAddAvailabilityConfirmation: (day: Date, timeSlot: string) => void;
 }
 
 export default function TimeSlots({
@@ -27,7 +28,8 @@ export default function TimeSlots({
   onSelectSlot,
   onAddAvailability,
   onSelectAppointment,
-  getStatusDetails
+  getStatusDetails,
+  onOpenAddAvailabilityConfirmation
 }: TimeSlotProps) {
   const getAppointmentsForDayAndTime = (day: Date, timeSlot: string) => {
     const [hours, minutes] = timeSlot.split(':').map(Number);
@@ -67,6 +69,7 @@ export default function TimeSlots({
                 onSelectSlot={() => onSelectSlot(day, timeSlot)}
                 onSelectAppointment={onSelectAppointment}
                 getStatusDetails={getStatusDetails}
+                onOpenAddAvailabilityConfirmation={onOpenAddAvailabilityConfirmation}
               />
             );
           })}
