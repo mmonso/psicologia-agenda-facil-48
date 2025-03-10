@@ -1,6 +1,6 @@
 
 import type { Appointment } from "../utils";
-import type { CalendarState } from "./useCalendarState";
+import type { CalendarState } from "../types/calendarTypes";
 import { useNavigationOperations } from "./operations/useNavigationOperations";
 import { useAvailabilityOperations } from "./operations/useAvailabilityOperations";
 import { useAppointmentOperations } from "./operations/useAppointmentOperations";

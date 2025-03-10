@@ -13,17 +13,12 @@ import {
 } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Patient, appointments } from "@/lib/data";
+import { Patient } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { getStatusBadge, getInitials } from "./PatientTable";
 import { PatientInfoTab } from "./PatientInfoTab";
 import { PatientAppointmentsTab } from "./PatientAppointmentsTab";
 import { PatientMedicalRecordTab } from "./PatientMedicalRecordTab";
-
-// Get patient's appointment count
-const getPatientAppointments = (patientId: string) => {
-  return appointments.filter((app) => app.patientId === patientId);
-};
 
 interface PatientDetailDialogProps {
   selectedPatient: Patient | null;
@@ -53,9 +48,6 @@ export function PatientDetailDialog({
   onSaveMedicalNotes
 }: PatientDetailDialogProps) {
   if (!selectedPatient) return null;
-
-  // Get patient's appointments
-  const patientAppointments = getPatientAppointments(selectedPatient.id);
 
   return (
     <Dialog open={!!selectedPatient} onOpenChange={onDialogClose}>
@@ -127,7 +119,7 @@ export function PatientDetailDialog({
           </TabsContent>
 
           <TabsContent value="appointments">
-            <PatientAppointmentsTab patientAppointments={patientAppointments} />
+            <PatientAppointmentsTab patientId={selectedPatient.id} />
           </TabsContent>
 
           <TabsContent value="medical-record">

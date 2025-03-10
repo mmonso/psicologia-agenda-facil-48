@@ -30,7 +30,6 @@ export function useAppointmentOperations({
   const scheduleNewAppointment = () => {
     if (!selectedSlot || !selectedPatientId) {
       toast({
-        title: "Atenção",
         description: "Selecione um paciente para agendar a consulta.",
       });
       return;
@@ -80,7 +79,6 @@ export function useAppointmentOperations({
     setPatients(updatedPatients);
     
     toast({
-      title: "Consulta agendada",
       description: `${patient.name} - ${new Date(selectedSlot.day).toLocaleDateString()} às ${selectedSlot.time}${isRecurring ? " (recorrente)" : ""}`,
     });
     
@@ -108,7 +106,6 @@ export function useAppointmentOperations({
     setAppointments(updatedAppointments);
     
     toast({
-      title: "Consulta atualizada",
       description: "Os detalhes da consulta foram atualizados com sucesso.",
     });
     
@@ -131,7 +128,6 @@ export function useAppointmentOperations({
     setAppointments(updatedAppointments);
     
     toast({
-      title: "Consulta cancelada",
       description: "A consulta foi cancelada com sucesso.",
     });
     
@@ -168,7 +164,6 @@ export function useAppointmentOperations({
     }
     
     toast({
-      title: "Consulta realizada",
       description: "A consulta foi marcada como realizada e paga.",
     });
     
@@ -191,7 +186,6 @@ export function useAppointmentOperations({
     setAppointments(updatedAppointments);
     
     toast({
-      title: "Não compareceu",
       description: "O paciente foi marcado como não compareceu.",
     });
     
