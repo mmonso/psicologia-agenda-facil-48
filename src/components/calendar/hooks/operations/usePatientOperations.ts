@@ -24,9 +24,7 @@ export function usePatientOperations(
     };
 
     if (!newPatientData.name.trim()) {
-      toast({
-        description: "Nome do paciente é obrigatório",
-      });
+      toast("Nome do paciente é obrigatório");
       return;
     }
 
@@ -42,9 +40,7 @@ export function usePatientOperations(
     
     setIsNewPatientDialogOpen(false);
     
-    toast({
-      description: `${newPatientData.name} foi adicionado com sucesso.`,
-    });
+    toast(`${newPatientData.name} foi adicionado com sucesso.`);
     
     setSelectedPatientId(newPatientData.id);
   };

@@ -29,9 +29,7 @@ export function useAppointmentOperations({
 }: AppointmentOperationsProps) {
   const scheduleNewAppointment = () => {
     if (!selectedSlot || !selectedPatientId) {
-      toast({
-        description: "Selecione um paciente para agendar a consulta.",
-      });
+      toast("Selecione um paciente para agendar a consulta.");
       return;
     }
     
@@ -78,9 +76,7 @@ export function useAppointmentOperations({
     });
     setPatients(updatedPatients);
     
-    toast({
-      description: `${patient.name} - ${new Date(selectedSlot.day).toLocaleDateString()} às ${selectedSlot.time}${isRecurring ? " (recorrente)" : ""}`,
-    });
+    toast(`${patient.name} - ${new Date(selectedSlot.day).toLocaleDateString()} às ${selectedSlot.time}${isRecurring ? " (recorrente)" : ""}`);
     
     resetDialogState();
   };
@@ -105,9 +101,7 @@ export function useAppointmentOperations({
     
     setAppointments(updatedAppointments);
     
-    toast({
-      description: "Os detalhes da consulta foram atualizados com sucesso.",
-    });
+    toast("Os detalhes da consulta foram atualizados com sucesso.");
     
     resetDialogState();
   };
@@ -127,9 +121,7 @@ export function useAppointmentOperations({
     
     setAppointments(updatedAppointments);
     
-    toast({
-      description: "A consulta foi cancelada com sucesso.",
-    });
+    toast("A consulta foi cancelada com sucesso.");
     
     resetDialogState();
   };
@@ -163,9 +155,7 @@ export function useAppointmentOperations({
       setPatients(updatedPatients);
     }
     
-    toast({
-      description: "A consulta foi marcada como realizada e paga.",
-    });
+    toast("A consulta foi marcada como realizada e paga.");
     
     resetDialogState();
   };
@@ -185,9 +175,7 @@ export function useAppointmentOperations({
     
     setAppointments(updatedAppointments);
     
-    toast({
-      description: "O paciente foi marcado como não compareceu.",
-    });
+    toast("O paciente foi marcado como não compareceu.");
     
     resetDialogState();
   };

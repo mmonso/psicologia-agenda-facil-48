@@ -30,9 +30,7 @@ export function useAvailabilityOperations({
     
     setAvailableSlots(newSlots);
     
-    toast({
-      description: `${format(day, "EEEE", { locale: ptBR })} às ${timeSlot} agora está disponível para consultas.`,
-    });
+    toast(`${format(day, "EEEE", { locale: ptBR })} às ${timeSlot} agora está disponível para consultas.`);
   };
   
   const removeSlotAvailability = (day: Date, timeSlot: string) => {
@@ -44,9 +42,7 @@ export function useAvailabilityOperations({
     
     setAvailableSlots(filteredSlots);
     
-    toast({
-      description: `${format(day, "EEEE", { locale: ptBR })} às ${timeSlot} não está mais disponível.`,
-    });
+    toast(`${format(day, "EEEE", { locale: ptBR })} às ${timeSlot} não está mais disponível.`);
 
     setSelectedSlot(null);
   };
