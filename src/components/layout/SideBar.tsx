@@ -7,7 +7,6 @@ import {
   Calendar,
   CreditCard,
   LayoutDashboard,
-  LogOut,
   Menu,
   Settings,
   Users,
@@ -89,18 +88,7 @@ export function SideBar() {
           />
         </nav>
       </div>
-      <div className="border-t p-3">
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start gap-2 text-muted-foreground hover:text-foreground hover:bg-accent",
-            collapsed && "justify-center px-0"
-          )}
-        >
-          <LogOut className="h-5 w-5" />
-          {!collapsed && <span>Sair</span>}
-        </Button>
-      </div>
+      {/* Removed the logout button and its container div */}
     </div>
   );
 }
